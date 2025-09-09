@@ -1,7 +1,7 @@
 // app/routes.ts
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
+import { index, route } from "@react-router/dev/routes";
 
-export default [
+const routes = [
   // Home
   index("routes/_index.tsx"),
 
@@ -10,4 +10,6 @@ export default [
 
   // Study page for sub-biomes (dynamic): /study/overworld/plains, etc.
   route("/study/:dimension/:biome", "routes/study.$dimension.$biome.tsx"),
-] satisfies RouteConfig;
+];
+
+export default routes;
