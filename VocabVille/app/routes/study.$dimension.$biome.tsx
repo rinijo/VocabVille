@@ -226,7 +226,7 @@ export default function StudyPage() {
               {/* flip card */}
               <div className={`flip ${flipped ? "is-flipped" : ""}`} onClick={() => setFlipped(f => !f)}>
                 <div className="flip-inner">
-                  <div className="flip-face flip-front"><span>Tap to reveal definition</span></div>
+                  <div className="flip-face flip-front"><span>Tap to reveal meaning</span></div>
                   <div className="flip-face flip-back"><span>{current.definition || "Definition not set yet."}</span></div>
                 </div>
               </div>
@@ -277,14 +277,14 @@ export default function StudyPage() {
             </div>
 
             <div style={{ display: "grid", gap: ".5rem", marginTop: ".75rem" }}>
-              <button className="mc-btn" onClick={saveAttempt}>Save the world</button>
+              <button className="mc-btn mc-btn-submit" onClick={saveAttempt}>Mine It!</button>
               {rewardReady ? (
                 <div className="card" style={{ background: "#12340eaa", borderColor: "#0a2608" }}>
                   ✅ First try, no flip on both! <b>Crafting Table +1</b> earned.
                 </div>
               ) : (
                 <div className="card" style={{ background: "#1b1b1baa" }}>
-                  Tip: Earn a <b>Crafting Table</b> by getting both MCQs right on your first try without flipping.
+                  Tip: Earn a <b>Crafting Table</b> by getting both questions right on your first try without checking the meaning.
                 </div>
               )}
             </div>
@@ -293,22 +293,8 @@ export default function StudyPage() {
           {/* side */}
           <aside className="study-side">
             <div className="side-card card">
-              <h3 style={{ marginTop: 0 }}>🎒 Inventory Chest</h3>
+              <h3 style={{ marginTop: 0 }}>Inventory Chest💎</h3>
               <p style={{ marginTop: ".25rem" }}>Crafting Tables: <b>{countItem(dimension, biome, "crafting_table")}</b></p>
-              <div style={{ marginTop: ".5rem", fontSize: 12, opacity: .9 }}>
-                Items are per-biome. Progress auto-saves.
-              </div>
-            </div>
-
-            <div className="side-card card">
-              <h4 style={{ marginTop: 0 }}>Rules</h4>
-              <ul style={{ margin: 0, paddingLeft: "1rem", lineHeight: 1.6 }}>
-                <li>Flip shows the definition (optional).</li>
-                <li>Pick 1 synonym + 1 antonym — first choice counts.</li>
-                <li>No flip + both correct on first try → <b>Crafting Table</b>.</li>
-                <li>Do that 3 times for a word → it’s <b>retired</b>.</li>
-                <li>Answer all 30 at least once → <b>Plains completed</b>.</li>
-              </ul>
             </div>
           </aside>
         </div>
