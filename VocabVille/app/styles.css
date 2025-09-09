@@ -138,7 +138,6 @@ html, body {
 }
 
 .biome-grid {
-  display: grid;
   gap: .5rem;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
@@ -180,4 +179,90 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* ---- Study page layout ---- */
+.study-hero::after { background: rgba(0,0,0,0.35); } /* a touch darker for readability */
+
+.study-grid {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, 95vw);
+  display: grid;
+  grid-template-columns: 1fr 320px; /* main + side */
+  gap: 1rem;
+}
+
+/* collapse panel on small screens */
+@media (max-width: 900px) {
+  .study-grid { grid-template-columns: 1fr; }
+  .study-side { order: -1; }
+}
+
+.study-main { padding: 1rem; }
+
+.study-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.study-nav {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: .5rem;
+}
+.study-step {
+  background: #111a;
+  border: 3px solid var(--mc-border);
+  padding: .4rem .6rem;
+  box-shadow: 0 4px 0 #000;
+}
+
+.mine-wrap { margin-top: .75rem; }
+.mine-title { margin: 0 0 .5rem; }
+.mine-word {
+  font-size: clamp(18px, 3.2vw, 28px);
+  margin: 0 0 .75rem;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.mine-fields {
+  display: grid;
+  gap: .6rem;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 700px) {
+  .mine-fields { grid-template-columns: 1fr; }
+}
+
+.field {
+  display: grid;
+  gap: .35rem;
+}
+.field > span {
+  font-size: 12px;
+  opacity: .85;
+}
+.field input,
+.field textarea {
+  width: 100%;
+  background: #1b1b1b;
+  color: #fff;
+  border: 3px solid var(--mc-border);
+  padding: .6rem .7rem;
+  box-shadow: 0 4px 0 #000;
+  outline: none;
+}
+.field textarea { resize: vertical; }
+
+/* Right panel */
+.study-side { position: relative; }
+.side-card { position: sticky; top: 1rem; }
+.side-card + .side-card { margin-top: 1rem; }
+
+.study-back-mobile { display: none; margin-top: 1rem; }
+@media (max-width: 900px) {
+  .study-back-mobile { display: block; }
 }
