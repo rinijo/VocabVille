@@ -266,3 +266,15 @@ html, body {
 @media (max-width: 900px) {
   .study-back-mobile { display: block; }
 }
+/* Top-right nav used across hero pages */
+.top-right-nav {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;              /* above the dark overlay */
+  display: flex;
+  gap: .5rem;
+}
+.top-right-nav .mc-btn {
+  padding: .55rem .8rem;   /* slightly tighter */
+}

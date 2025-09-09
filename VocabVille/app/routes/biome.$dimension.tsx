@@ -53,6 +53,11 @@ export default function BiomePage() {
 
   return (
     <main className="hero" style={{ backgroundImage: `url(${config.bg})` }}>
+      {/* TOP-RIGHT NAV */}
+      <nav className="top-right-nav">
+        <Link className="mc-btn" to="/">Back to Home</Link>
+      </nav>
+
       <div className="center-wrap">
         <div className="stack">
           <span className={config.badgeClass}>{config.label}</span>
@@ -73,12 +78,6 @@ export default function BiomePage() {
                 </div>
               </div>
             )}
-
-            <div style={{ marginTop: "1rem" }}>
-              <Link className="mc-btn" to="/">
-                Back to Home
-              </Link>
-            </div>
           </div>
         </div>
       </div>
