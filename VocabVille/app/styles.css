@@ -102,3 +102,9 @@ html, body {
 .card h2 {
   margin-top: 0;
 }
+.mc-btn.locked {
+  background: #555;
+  box-shadow: 0 6px 0 #333, 0 8px 0 #000;
+  color: #ccc;
+  cursor: not-allowed;
+}

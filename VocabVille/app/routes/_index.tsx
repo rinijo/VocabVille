@@ -5,15 +5,18 @@ export default function Index() {
   return (
     <main
       className="hero"
-      style={{ backgroundImage: "url(/images/home-bg.jpg)" }} /* <-- swap for your image */
+      style={{ backgroundImage: "url(/images/home-bg.jpg)" }}
     >
       <div className="center-wrap">
         <div className="stack">
           <h1 className="h1">Welcome Harvey to your Minecraft VocabVille</h1>
 
+          {/* Active */}
           <McButton to="/biome/overworld">Overworld</McButton>
-          <McButton to="/biome/nether">The Nether</McButton>
-          <McButton to="/biome/the-end">TheEnd</McButton>
+
+          {/* Locked */}
+          <McButton locked>The Nether</McButton>
+          <McButton locked>TheEnd</McButton>
         </div>
       </div>
     </main>
