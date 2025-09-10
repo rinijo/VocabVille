@@ -327,3 +327,18 @@ html, body {
 .mcq-option.correct { background: #195c28; box-shadow: 0 6px 0 #0c3a18, 0 8px 0 #000; }
 .mcq-option.wrong { background: #6b2f1f; box-shadow: 0 6px 0 #401d14, 0 8px 0 #000; }
 .mcq-option.dim { opacity: .75; }
+/* Quest two-column layout */
+.quest-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.quest-card { align-self: start; }
+.quest-creeper { padding: .5rem; }  /* tighter padding so stage fills nicely */
+
+@media (max-width: 1000px) {
+  .quest-grid { grid-template-columns: 1fr; }
+  .quest-creeper { order: -1; } /* show animation first on small screens (optional) */
+}

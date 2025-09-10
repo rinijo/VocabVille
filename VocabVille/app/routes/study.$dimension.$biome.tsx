@@ -3,7 +3,6 @@ import { Link, useLoaderData, type LoaderFunctionArgs } from "react-router";
 import { OVERWORLD_CATEGORIES } from "../data/overworld";
 import { addItem, countItem } from "../utils/inventory";
 
-/** ---------- Types ---------- */
 type MCQ = { correct: string; options: string[] };
 type WordCard = {
   term: string;
@@ -22,106 +21,73 @@ type LoaderData = {
   masteredCount: number;
 };
 
-/** ---------- Persistence (results/mastery) ---------- */
 type WordStatus = {
-  answeredCorrectOnce?: boolean; // both MCQs correct at least once
-  masteryStreak?: number;        // +1 if first-try/no-flip success
-  mastered?: boolean;            // streak >= 3
+  answeredCorrectOnce?: boolean;
+  masteryStreak?: number;
+  mastered?: boolean;
   totalFlips?: number;
   lastResult?: "success" | "fail";
 };
 
 const STATUS_KEY = "vocabville:study:status";
-
-function statusScope(d: string, b: string) {
-  return `${STATUS_KEY}:${d}:${b}`;
-}
+function statusScope(d: string, b: string) { return `${STATUS_KEY}:${d}:${b}`; }
 function loadAllStatus(d: string, b: string): Record<string, WordStatus> {
-  try {
-    const raw = localStorage.getItem(statusScope(d, b));
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+  try { const raw = localStorage.getItem(statusScope(d,b)); return raw ? JSON.parse(raw) : {}; }
+  catch { return {}; }
 }
 function saveAllStatus(d: string, b: string, map: Record<string, WordStatus>) {
-  localStorage.setItem(statusScope(d, b), JSON.stringify(map));
+  localStorage.setItem(statusScope(d,b), JSON.stringify(map));
 }
 
-/** ---------- Loader ---------- */
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const dimension = (params.dimension ?? "").toLowerCase();
   const biome = (params.biome ?? "").toLowerCase();
 
   if (dimension !== "overworld" || !biome) {
     throw new Response(JSON.stringify({ message: "Unknown study path" }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
+      status: 404, headers: { "Content-Type": "application/json" },
     });
   }
 
-  const allBiomes = OVERWORLD_CATEGORIES.flatMap(c => c.biomes);
-  const match = allBiomes.find(b => b.slug === biome);
-  const name =
-    match?.name ??
-    biome.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
-
-  const blurbMap: Record<string, string> = {
-    plains: "Flat grasslands with villages and friendly mobs.",
-  };
-  const blurb = blurbMap[biome] ?? `Explore the ${name} biome.`;
+  const allBiomes = OVERWORLD_CATEGORIES.flatMap((c) => c.biomes);
+  const match = allBiomes.find((b) => b.slug === biome);
+  const name = match?.name ?? biome.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  const blurb = ( { plains: "Flat grasslands with villages and friendly mobs." } as Record<string,string> )[biome]
+    ?? `Explore the ${name} biome.`;
   const bg = `/images/overworld/${biome}.jpg`;
 
-  // Load JSON from /public
   const base = new URL(request.url).origin;
   const res = await fetch(new URL(`/words/overworld/${biome}.json`, base));
-  if (!res.ok) {
-    throw new Response(JSON.stringify({ message: "Words not found for this biome." }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-  const raw: WordCard[] = await res.json();
+  if (!res.ok) throw new Response(JSON.stringify({ message: "Words not found for this biome." }), {
+    status: 500, headers: { "Content-Type": "application/json" },
+  });
 
-  // Normalize
+  const raw: WordCard[] = await res.json();
   const words: WordCard[] = raw.map((w) => ({
     term: w.term,
     definition: w.definition ?? "",
-    synonyms: {
-      correct: w.synonyms?.correct ?? "",
-      options: Array.isArray(w.synonyms?.options) ? w.synonyms.options.slice(0, 4) : [],
-    },
-    antonyms: {
-      correct: w.antonyms?.correct ?? "",
-      options: Array.isArray(w.antonyms?.options) ? w.antonyms.options.slice(0, 4) : [],
-    },
+    synonyms: { correct: w.synonyms?.correct ?? "", options: Array.isArray(w.synonyms?.options) ? w.synonyms.options.slice(0,4) : [] },
+    antonyms: { correct: w.antonyms?.correct ?? "", options: Array.isArray(w.antonyms?.options) ? w.antonyms.options.slice(0,4) : [] },
   }));
 
   const map = loadAllStatus(dimension, biome);
-  const completedOnceCount = words.filter(w => map[w.term]?.answeredCorrectOnce).length;
-  const masteredCount = words.filter(w => map[w.term]?.mastered).length;
+  const completedOnceCount = words.filter((w) => map[w.term]?.answeredCorrectOnce).length;
+  const masteredCount = words.filter((w) => map[w.term]?.mastered).length;
 
-  // Avoid `satisfies` here
-  const data: LoaderData = {
-    dimension, biome, name, bg, blurb, words, completedOnceCount, masteredCount,
-  };
+  const data: LoaderData = { dimension, biome, name, bg, blurb, words, completedOnceCount, masteredCount };
   return Response.json(data);
 }
 
-/** ---------- Component ---------- */
 export default function StudyPage() {
-  const { dimension, biome, name, bg, blurb, words } =
-    useLoaderData<typeof loader>();
+  const { dimension, biome, name, bg, blurb, words } = useLoaderData<typeof loader>();
 
-  // active pool = not mastered (fallback to all)
   const statusInitial = loadAllStatus(dimension, biome);
-  const active = words.filter(w => !statusInitial[w.term]?.mastered);
+  const active = words.filter((w) => !statusInitial[w.term]?.mastered);
   const pool = active.length ? active : words;
 
   const [idx, setIdx] = React.useState(0);
   const current = pool[idx];
 
-  // UI state
   const [flipped, setFlipped] = React.useState(false);
   const [synPick, setSynPick] = React.useState<string | null>(null);
   const [antPick, setAntPick] = React.useState<string | null>(null);
@@ -134,33 +100,20 @@ export default function StudyPage() {
     setAntPick(null); setAntLocked(false);
   }, [current?.term]);
 
-  // first-try checks
   const synFirst = synPick !== null && synLocked && synPick === current?.synonyms.correct;
   const antFirst = antPick !== null && antLocked && antPick === current?.antonyms.correct;
   const rewardReady = !flipped && synFirst && antFirst;
 
-  function pickSyn(opt: string) {
-    if (synLocked) return;
-    setSynPick(opt);
-    setSynLocked(true);
-  }
-  function pickAnt(opt: string) {
-    if (antLocked) return;
-    setAntPick(opt);
-    setAntLocked(true);
-  }
+  function pickSyn(opt: string) { if (!synLocked) { setSynPick(opt); setSynLocked(true); } }
+  function pickAnt(opt: string) { if (!antLocked) { setAntPick(opt); setAntLocked(true); } }
 
   function saveAttempt() {
     if (!current) return;
     const statusMap = loadAllStatus(dimension, biome);
     const st: WordStatus = statusMap[current.term] ?? {};
-
     if (flipped) st.totalFlips = (st.totalFlips ?? 0) + 1;
 
-    const bothCorrect =
-      synPick === current.synonyms.correct &&
-      antPick === current.antonyms.correct;
-
+    const bothCorrect = synPick === current.synonyms.correct && antPick === current.antonyms.correct;
     if (bothCorrect) {
       st.answeredCorrectOnce = true;
       st.lastResult = "success";
@@ -171,35 +124,27 @@ export default function StudyPage() {
       }
     } else {
       st.lastResult = "fail";
-      // Optional strictness: reset streak on any miss/flip
-      // st.masteryStreak = 0;
     }
 
     statusMap[current.term] = st;
     saveAllStatus(dimension, biome, statusMap);
-
-    // next in pool
     setIdx((i) => (i + 1) % pool.length);
     alert("Saved! ⛏️");
   }
 
-  // live counts
   const statusNow = loadAllStatus(dimension, biome);
-  const completedOnceCount = words.filter(w => statusNow[w.term]?.answeredCorrectOnce).length;
-  const masteredCount = words.filter(w => statusNow[w.term]?.mastered).length;
+  const completedOnceCount = words.filter((w) => statusNow[w.term]?.answeredCorrectOnce).length;
+  const masteredCount = words.filter((w) => statusNow[w.term]?.mastered).length;
   const craftingCount = countItem(dimension, biome, "crafting_table");
-  const allAnsweredOnce = completedOnceCount === words.length;
 
   return (
     <main className="hero study-hero" style={{ backgroundImage: `url(${bg})` }}>
-      {/* top-right */}
       <nav className="top-right-nav">
         <Link className="mc-btn" to={`/biome/${dimension}`}>Back to Overworld</Link>
       </nav>
 
       <div className="center-wrap">
         <div className="study-grid">
-          {/* main */}
           <section className="study-main card">
             <header className="study-header">
               <div>
@@ -208,9 +153,6 @@ export default function StudyPage() {
                 <div style={{ fontSize: 12, opacity: .85 }}>
                   Completed once: <b>{completedOnceCount}</b> / {words.length} · Mastered: <b>{masteredCount}</b>
                 </div>
-                {allAnsweredOnce && (
-                  <div style={{ marginTop: ".25rem" }}><b>🎉 Plains completed!</b></div>
-                )}
               </div>
               <div className="study-nav">
                 <button className="mc-btn" onClick={() => setIdx(i => (i > 0 ? i - 1 : pool.length - 1))}>◀ Prev</button>
@@ -223,15 +165,13 @@ export default function StudyPage() {
               <h3 className="mine-title">⛏️ Mine the word</h3>
               <div className="mine-word">{current.term}</div>
 
-              {/* flip card */}
               <div className={`flip ${flipped ? "is-flipped" : ""}`} onClick={() => setFlipped(f => !f)}>
                 <div className="flip-inner">
-                  <div className="flip-face flip-front"><span>Tap to reveal meaning</span></div>
+                  <div className="flip-face flip-front"><span>Tap to reveal definition</span></div>
                   <div className="flip-face flip-back"><span>{current.definition || "Definition not set yet."}</span></div>
                 </div>
               </div>
 
-              {/* synonym MCQ */}
               <div className="mcq">
                 <div className="mcq-title">Synonym</div>
                 <div className="mcq-grid">
@@ -253,7 +193,6 @@ export default function StudyPage() {
                 </div>
               </div>
 
-              {/* antonym MCQ */}
               <div className="mcq">
                 <div className="mcq-title">Antonym</div>
                 <div className="mcq-grid">
@@ -277,24 +216,38 @@ export default function StudyPage() {
             </div>
 
             <div style={{ display: "grid", gap: ".5rem", marginTop: ".75rem" }}>
-              <button className="mc-btn mc-btn-submit" onClick={saveAttempt}>Mine It!</button>
+              <button className="mc-btn" onClick={saveAttempt}>Save the world</button>
               {rewardReady ? (
                 <div className="card" style={{ background: "#12340eaa", borderColor: "#0a2608" }}>
                   ✅ First try, no flip on both! <b>Crafting Table +1</b> earned.
                 </div>
               ) : (
                 <div className="card" style={{ background: "#1b1b1baa" }}>
-                  Tip: Earn a <b>Crafting Table</b> by getting both questions right on your first try without checking the meaning.
+                  Tip: Earn a <b>Crafting Table</b> by getting both MCQs right on your first try without flipping.
                 </div>
               )}
             </div>
           </section>
 
-          {/* side */}
+          {/* RIGHT PANEL */}
           <aside className="study-side">
             <div className="side-card card">
               <h3 style={{ marginTop: 0 }}>Inventory Chest💎</h3>
-              <p style={{ marginTop: ".25rem" }}>Crafting Tables: <b>{countItem(dimension, biome, "crafting_table")}</b></p>
+              <p style={{ marginTop: ".25rem" }}>
+                Crafting Tables: <b>{craftingCount}</b>
+              </p>
+              <div style={{ marginTop: ".5rem", fontSize: 12, opacity: .9 }}>
+                Items are per-biome. Progress auto-saves.
+              </div>
+            </div>
+
+            {/* Save the villagers — now LINKS to quest page */}
+            <div className="side-card card">
+              <h3 style={{ marginTop: 0 }}>🧑‍🌾 Save the villagers</h3>
+              <p style={{ margin: ".25rem 0" }}>There is a creeper attack!</p>
+              <Link className="mc-btn" to={`/quest/${dimension}/${biome}`}>
+                Save the villagers
+              </Link>
             </div>
           </aside>
         </div>
