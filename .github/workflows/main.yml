@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages (React Router static client)
+name: Deploy Vite SPA to GitHub Pages
 
 on:
   push:
@@ -20,81 +20,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 🔎 Detect where package.json is (root or subfolder)
-      - name: Detect app directory
-        id: detect
-        run: |
-          set -e
-          APP_DIR="$(find . -maxdepth 3 -type f -name package.json -not -path '*/node_modules/*' -printf '%h\n' | head -n1)"
-          if [ -z "$APP_DIR" ]; then
-            echo "No package.json found. Did you commit it?" >&2
-            exit 1
-          fi
-          echo "Found app dir: $APP_DIR"
-          echo "app_dir=$APP_DIR" >> "$GITHUB_OUTPUT"
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: ${{ steps.detect.outputs.app_dir }}/package-lock.json
 
-      - name: Install deps
+      - run: npm ci || npm install
+      - run: npm run build
+
+      # ✅ SPA fallback + disable Jekyll in the Vite output folder
+      - name: Prepare Pages artifact
         run: |
-          if [ -f "${{ steps.detect.outputs.app_dir }}/package-lock.json" ]; then
-            npm ci --prefix "${{ steps.detect.outputs.app_dir }}"
-          else
-            npm install --prefix "${{ steps.detect.outputs.app_dir }}"
-          fi
-
-      - name: Build
-        run: npm run build --prefix "${{ steps.detect.outputs.app_dir }}"
-
-      # 🧭 Find the built folder, create SPA fallback, and pick upload path
-      - name: Prepare Pages artifact (SPA fallback + disable Jekyll)
-        id: prep
-        run: |
-          set -e
-          APP_DIR="${{ steps.detect.outputs.app_dir }}"
-          echo "== Build tree =="
-          if [ -d "$APP_DIR/build" ]; then
-            ls -laR "$APP_DIR/build" | sed -n '1,200p'
-          else
-            echo "No build/ directory found under $APP_DIR" >&2
-            exit 1
-          fi
-
-          # Prefer build/client if it exists, else build
-          if [ -d "$APP_DIR/build/client" ]; then
-            OUT_DIR="$APP_DIR/build/client"
-          else
-            OUT_DIR="$APP_DIR/build"
-          fi
-          echo "Using OUT_DIR=$OUT_DIR"
-
-          # Locate index.html (client or root)
-          if [ -f "$OUT_DIR/index.html" ]; then
-            INDEX="$OUT_DIR/index.html"
-          elif [ -f "$APP_DIR/build/index.html" ]; then
-            INDEX="$APP_DIR/build/index.html"
-          else
-            echo "Could not find index.html in $OUT_DIR or $APP_DIR/build" >&2
-            exit 1
-          fi
-          echo "Found index at: $INDEX"
-
-          # Create 404.html alongside index.html for SPA fallback
-          cp -f "$INDEX" "$(dirname "$INDEX")/404.html" || true
-
-          # Disable Jekyll in chosen out dir
-          touch "$OUT_DIR/.nojekyll" || touch "$APP_DIR/build/.nojekyll"
-
-          echo "upload_path=$OUT_DIR" >> "$GITHUB_OUTPUT"
+          ls -la dist
+          cp -f dist/index.html dist/404.html
+          touch dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ steps.prep.outputs.upload_path }}
+          path: dist
 
   deploy:
     runs-on: ubuntu-latest
@@ -103,6 +47,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
