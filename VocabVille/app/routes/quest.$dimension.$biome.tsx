@@ -18,7 +18,8 @@ const QUESTS: Record<string, QuestConfig> = {
       "Calm the crowd by explaining a tricky definition.",
       "Ring the bell to announce the village is safe."
     ],
-    reward: "Village Banner (Plains)"
+    reward: "Village Banner (Plains)",
+    bg: "/images/overworld/plains-quest-bg.png"
   },
   woodlands: {
     title: "Whispering Woods",
