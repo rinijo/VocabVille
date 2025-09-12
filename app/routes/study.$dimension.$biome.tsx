@@ -37,7 +37,7 @@ const saveAllStatus = (d: string, b: string, map: Record<string, WordStatus>) =>
 };
 
 export default function StudyPage() {
-  // ───────────────────────────────── params/state (always called in same order)
+  // ───────────────────────────────── params/state
   const { dimension = "", biome = "" } = useParams();
   const dim = dimension.toLowerCase();
   const pathIsValid = dim === "overworld" && !!biome;
@@ -60,14 +60,22 @@ export default function StudyPage() {
   const current = pool[idx];
 
   const [flipped, setFlipped] = React.useState(false);
+
+  // MCQ picks (changeable)
   const [synPick, setSynPick] = React.useState<string | null>(null);
   const [antPick, setAntPick] = React.useState<string | null>(null);
-  const [synLocked, setSynLocked] = React.useState(false);
-  const [antLocked, setAntLocked] = React.useState(false);
+  const [submitted, setSubmitted] = React.useState(false);
 
-  // ───────────────────────────────── effects (never inside conditionals)
+  // NEW: toast popup state
+  const [toast, setToast] = React.useState<{ kind: "success" | "error"; msg: string } | null>(null);
+  const toastTimerRef = React.useRef<number | null>(null);
+  const showToast = (kind: "success" | "error", msg: string) => {
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    setToast({ kind, msg });
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 3000);
+  };
+
   React.useEffect(() => {
-    // derive nice names/blurb from data
     const allBiomes = OVERWORLD_CATEGORIES.flatMap(c => c.biomes);
     const match = allBiomes.find(b => b.slug === biome);
     setName(match?.name ?? titleCase(biome));
@@ -78,15 +86,12 @@ export default function StudyPage() {
   }, [biome]);
 
   React.useEffect(() => {
-    // fetch words for valid paths only; otherwise mark error
     let cancelled = false;
     (async () => {
       try {
         setLoading(true);
         setError(null);
-        if (!pathIsValid) {
-          throw new Error("Unknown study path.");
-        }
+        if (!pathIsValid) throw new Error("Unknown study path.");
         const res = await fetch(`${BASE}words/overworld/${biome}.json`, { cache: "no-store" });
         if (!res.ok) throw new Error("Words not found for this biome.");
         const raw: WordCard[] = await res.json();
@@ -109,17 +114,22 @@ export default function StudyPage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [BASE, biome, pathIsValid]);
 
   React.useEffect(() => {
     // reset per-card UI when the current word changes
     setFlipped(false);
-    setSynPick(null); setSynLocked(false);
-    setAntPick(null); setAntLocked(false);
+    setSynPick(null);
+    setAntPick(null);
+    setSubmitted(false);
   }, [current?.term]);
+
+  React.useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   // ───────────────────────────────── helpers (no hooks below)
   const bg = `${BASE}images/overworld/${biome}.jpg`;
@@ -128,39 +138,56 @@ export default function StudyPage() {
   const masteredCount = words.filter(w => statusNow[w.term]?.mastered).length;
   const craftingCount = countItem(dimension, biome, "crafting_table");
 
-  const synFirst = synPick !== null && synLocked && synPick === current?.synonyms.correct;
-  const antFirst = antPick !== null && antLocked && antPick === current?.antonyms.correct;
-  const rewardReady = !flipped && synFirst && antFirst;
+  function pickSyn(opt: string) { setSynPick(opt); }
+  function pickAnt(opt: string) { setAntPick(opt); }
 
-  function pickSyn(opt: string) { if (!synLocked) { setSynPick(opt); setSynLocked(true); } }
-  function pickAnt(opt: string) { if (!antLocked) { setAntPick(opt); setAntLocked(true); } }
+function saveAttempt() {
+  if (!current) return;
 
-  function saveAttempt() {
-    if (!current) return;
-    const statusMap = loadAllStatus(dimension, biome);
-    const st: WordStatus = statusMap[current.term] ?? {};
-    if (flipped) st.totalFlips = (st.totalFlips ?? 0) + 1;
+  const statusMap = loadAllStatus(dimension, biome);
+  const st: WordStatus = statusMap[current.term] ?? {};
 
-    const bothCorrect = synPick === current.synonyms.correct && antPick === current.antonyms.correct;
-    if (bothCorrect) {
-      st.answeredCorrectOnce = true;
-      st.lastResult = "success";
-      if (rewardReady) {
-        st.masteryStreak = (st.masteryStreak ?? 0) + 1;
-        if ((st.masteryStreak ?? 0) >= 3) st.mastered = true;
-        addItem(dimension, biome, "crafting_table", 1);
-      }
-    } else {
-      st.lastResult = "fail";
+  if (flipped) st.totalFlips = (st.totalFlips ?? 0) + 1;
+
+  const synCorrect = synPick === current.synonyms.correct;
+  const antCorrect = antPick === current.antonyms.correct;
+  const bothCorrect = synCorrect && antCorrect;
+
+  if (bothCorrect) {
+    st.answeredCorrectOnce = true;
+    st.lastResult = "success";
+    st.masteryStreak = (st.masteryStreak ?? 0) + (!flipped ? 1 : 0);
+    if ((st.masteryStreak ?? 0) >= 3) st.mastered = true;
+    if (!flipped) addItem(dimension, biome, "crafting_table", 1);
+    showToast("success", "Correct! ✅");
+  } else {
+    st.lastResult = "fail";
+    st.masteryStreak = 0;
+
+    // Build error message
+    let wrongMsg = "Wrong ❌ — ";
+    if (!synCorrect && !antCorrect) {
+      wrongMsg += "both Synonym and Antonym are incorrect.";
+    } else if (!synCorrect) {
+      wrongMsg += "the Synonym is incorrect.";
+    } else if (!antCorrect) {
+      wrongMsg += "the Antonym is incorrect.";
     }
 
-    statusMap[current.term] = st;
-    saveAllStatus(dimension, biome, statusMap);
-    setIdx(i => (pool.length ? (i + 1) % pool.length : 0));
-    alert("Saved! ⛏️");
+    showToast("error", wrongMsg);
   }
 
-  // ───────────────────────────────── render (branch with flags, not before hooks)
+  statusMap[current.term] = st;
+  saveAllStatus(dimension, biome, statusMap);
+
+  setSubmitted(true);
+
+  // move to next card (keeps flow snappy)
+  setIdx(i => (pool.length ? (i + 1) % pool.length : 0));
+}
+
+
+  // ───────────────────────────────── render
   if (!pathIsValid) {
     return (
       <main className="center-wrap">
@@ -202,7 +229,7 @@ export default function StudyPage() {
 
       <div className="center-wrap">
         <div className="study-grid">
-          <section className="study-main card">
+          <section className="study-main card" style={{ position: "relative" }}>
             <header className="study-header">
               <div>
                 <div className="badge badge--overworld">{name}</div>
@@ -229,20 +256,19 @@ export default function StudyPage() {
                 </div>
               </div>
 
+              {/* Synonyms */}
               <div className="mcq">
                 <div className="mcq-title">Synonym</div>
                 <div className="mcq-grid">
                   {currentWord.synonyms.options.map(opt => {
                     const chosen = synPick === opt;
-                    const isCorrect = opt === currentWord.synonyms.correct;
-                    const cls = [
-                      "mcq-option",
-                      synLocked && chosen && isCorrect && "correct",
-                      synLocked && chosen && !isCorrect && "wrong",
-                      synLocked && !chosen && "dim",
-                    ].filter(Boolean).join(" ");
+                    const cls = ["mcq-option", chosen && "selected"].filter(Boolean).join(" ");
                     return (
-                      <button key={opt} className={cls} disabled={synLocked} onClick={() => pickSyn(opt)}>
+                      <button
+                        key={opt}
+                        className={cls}
+                        onClick={() => setSynPick(opt)}
+                      >
                         {opt}
                       </button>
                     );
@@ -250,20 +276,19 @@ export default function StudyPage() {
                 </div>
               </div>
 
+              {/* Antonyms */}
               <div className="mcq">
                 <div className="mcq-title">Antonym</div>
                 <div className="mcq-grid">
                   {currentWord.antonyms.options.map(opt => {
                     const chosen = antPick === opt;
-                    const isCorrect = opt === currentWord.antonyms.correct;
-                    const cls = [
-                      "mcq-option",
-                      antLocked && chosen && isCorrect && "correct",
-                      antLocked && chosen && !isCorrect && "wrong",
-                      antLocked && !chosen && "dim",
-                    ].filter(Boolean).join(" ");
+                    const cls = ["mcq-option", chosen && "selected"].filter(Boolean).join(" ");
                     return (
-                      <button key={opt} className={cls} disabled={antLocked} onClick={() => pickAnt(opt)}>
+                      <button
+                        key={opt}
+                        className={cls}
+                        onClick={() => setAntPick(opt)}
+                      >
                         {opt}
                       </button>
                     );
@@ -273,16 +298,10 @@ export default function StudyPage() {
             </div>
 
             <div style={{ display: "grid", gap: ".5rem", marginTop: ".75rem" }}>
-              <button className="mc-btn" onClick={saveAttempt}>Save the world</button>
-              {rewardReady ? (
-                <div className="card" style={{ background: "#12340eaa", borderColor: "#0a2608" }}>
-                  ✅ First try, no flip on both! <b>Crafting Table +1</b> earned.
-                </div>
-              ) : (
-                <div className="card" style={{ background: "#1b1b1baa" }}>
-                  Tip: Earn a <b>Crafting Table</b> by getting both MCQs right on your first try without flipping.
-                </div>
-              )}
+              <button className="mc-btn" onClick={saveAttempt}>Submit</button>
+              <div className="card" style={{ background: "#1b1b1baa" }}>
+                Tip: You can change your answers before submitting. No correctness is shown until submit.
+              </div>
             </div>
           </section>
 
@@ -307,6 +326,32 @@ export default function StudyPage() {
           </aside>
         </div>
       </div>
+
+      {/* Toast popup (auto hides in 3s) */}
+      {toast && (
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 10,
+            background: toast.kind === "success" ? "#195c28" : "#6b2f1f",
+            color: "#fff",
+            border: "4px solid #1b1b1b",
+            boxShadow: "0 8px 0 #000",
+            padding: "0.85rem 1.1rem",
+            fontFamily: "'Press Start 2P', system-ui, sans-serif",
+            fontSize: "14px",
+            textAlign: "center",
+            maxWidth: "min(90%, 400px)",
+          }}
+          role="status"
+          aria-live="assertive"
+        >
+          {toast.msg}
+        </div>
+      )}
     </main>
   );
 }

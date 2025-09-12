@@ -446,3 +446,10 @@ img, video, canvas, svg { max-width: 100%; height: auto; }
 @media (max-width: 480px) {
   .top-right-nav .mc-btn { font-size: 12px; padding: .5rem .65rem; }
 }
+/* MCQ: user-selected (pre-submit) */
+.mcq-option.selected {
+  background: #b58900;              /* amber/gold */
+  box-shadow: 0 6px 0 #FFAA00, 0 8px 0 #000;
+  border-color: var(--mc-border);
+  filter: none;                      /* cancel hover brighten so it's stable */
+}
