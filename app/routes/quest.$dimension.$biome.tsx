@@ -1,9 +1,9 @@
 import * as React from "react";
-import { Link, useLoaderData, type LoaderFunctionArgs } from "react-router";
+import { Link, useParams } from "react-router-dom";
 import CreeperBg from "../components/CreeperBg";
 
 type QuestConfig = { title: string; intro: string; steps: string[]; reward?: string; bg?: string; };
-type LoaderData = { dimension: string; biome: string; name: string; quest: QuestConfig; bg: string; };
+const BASE = import.meta.env.BASE_URL;
 
 const TITLECASE = (s: string) => s.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 
@@ -19,7 +19,7 @@ const QUESTS: Record<string, QuestConfig> = {
       "Ring the bell to announce the village is safe."
     ],
     reward: "Village Banner (Plains)",
-    bg: "/images/overworld/plains-quest-bg.png"
+    bg: `${BASE}images/overworld/plains-quest-bg.png`
   },
   woodlands: {
     title: "Whispering Woods",
@@ -35,30 +35,35 @@ const QUESTS: Record<string, QuestConfig> = {
   }
 };
 
-export async function loader({ params }: LoaderFunctionArgs) {
-  const dimension = (params.dimension ?? "").toLowerCase();
-  const biome = (params.biome ?? "").toLowerCase();
+export default function QuestPage() {
+  const { dimension = "", biome = "" } = useParams();
 
   if (!dimension || !biome) {
-    throw new Response(JSON.stringify({ message: "Unknown quest path" }), {
-      status: 404, headers: { "Content-Type": "application/json" }
-    });
+    return (
+      <main className="center-wrap">
+        <div className="stack">
+          <h1 className="h1">Unknown quest path</h1>
+          <Link className="mc-btn" to="/">Back to Home</Link>
+        </div>
+      </main>
+    );
   }
 
   const quest = QUESTS[biome] ?? {
     title: `${TITLECASE(biome)} Quest`,
     intro: `A new challenge awaits in the ${TITLECASE(biome)} biome.`,
-    steps: ["Meet the local guide.", "Solve a synonym riddle.", "Solve an antonym riddle.", "Place the correct word on the signpost.", "Report back to the guide."],
+    steps: [
+      "Meet the local guide.",
+      "Solve a synonym riddle.",
+      "Solve an antonym riddle.",
+      "Place the correct word on the signpost.",
+      "Report back to the guide."
+    ],
     reward: `${TITLECASE(biome)} Emblem`
   };
 
-  const bg = quest.bg ?? `/images/overworld/${biome}.jpg`;
-  const data: LoaderData = { dimension, biome, name: TITLECASE(biome), quest, bg };
-  return Response.json(data);
-}
-
-export default function QuestPage() {
-  const { dimension, biome, name, quest, bg } = useLoaderData<typeof loader>();
+  const name = TITLECASE(biome);
+  const bg = quest.bg ?? `${BASE}images/overworld/${biome}.jpg`;
   const [checked, setChecked] = React.useState<boolean[]>(() => quest.steps.map(() => false));
   const allDone = checked.every(Boolean);
   const toggle = (i: number) => setChecked(prev => prev.map((v, idx) => (idx === i ? !v : v)));
@@ -74,7 +79,7 @@ export default function QuestPage() {
         <Link className="mc-btn" to={`/biome/${dimension}`}>Overworld</Link>
       </nav>
 
-      {/* Content (above background) */}
+      {/* Content */}
       <div className="center-wrap" style={{ position: "relative", zIndex: 1 }}>
         <section className="card" style={{ maxWidth: 900 }}>
           <div className="badge badge--overworld">{name} Quest</div>

@@ -1,0 +1,182 @@
+[
+  {
+    "term": "squalor",
+    "definition": "Extremely dirty and unpleasant conditions, often due to poverty or neglect.",
+    "synonyms": { "correct": "filth", "options": ["filth", "luxury", "polish", "comfort"] },
+    "antonyms": { "correct": "cleanliness", "options": ["grime", "decay", "neglect", "cleanliness"] }
+  },
+  {
+    "term": "initiate",
+    "definition": "To begin or set something in motion.",
+    "synonyms": { "correct": "commence", "options": ["commence", "cease", "halt", "delay"] },
+    "antonyms": { "correct": "conclude", "options": ["launch", "start", "open", "conclude"] }
+  },
+  {
+    "term": "despised",
+    "definition": "Regarded with strong dislike or hatred.",
+    "synonyms": { "correct": "detested", "options": ["detested", "admired", "cherished", "valued"] },
+    "antonyms": { "correct": "admired", "options": ["loathed", "hated", "scorned", "admired"] }
+  },
+  {
+    "term": "concentrated",
+    "definition": "Present in high strength or very focused; not diluted.",
+    "synonyms": { "correct": "intense", "options": ["intense", "weak", "scattered", "diluted"] },
+    "antonyms": { "correct": "diluted", "options": ["focused", "potent", "intense", "diluted"] }
+  },
+  {
+    "term": "environment",
+    "definition": "The surroundings or conditions in which a person, animal, or plant lives.",
+    "synonyms": { "correct": "surroundings", "options": ["surroundings", "ingredient", "vacuum", "interior"] },
+    "antonyms": { "correct": "vacuum", "options": ["habitat", "setting", "milieu", "vacuum"] }
+  },
+  {
+    "term": "integrity",
+    "definition": "Honesty and strong moral principles; the state of being whole and undamaged.",
+    "synonyms": { "correct": "honesty", "options": ["honesty", "deceit", "fraud", "trickery"] },
+    "antonyms": { "correct": "corruption", "options": ["uprightness", "honour", "decency", "corruption"] }
+  },
+  {
+    "term": "futile",
+    "definition": "Incapable of producing any useful result; pointless.",
+    "synonyms": { "correct": "pointless", "options": ["pointless", "productive", "effective", "helpful"] },
+    "antonyms": { "correct": "effective", "options": ["useless", "vain", "idle", "effective"] }
+  },
+  {
+    "term": "inane",
+    "definition": "Silly or lacking sense.",
+    "synonyms": { "correct": "silly", "options": ["silly", "wise", "serious", "sober"] },
+    "antonyms": { "correct": "sensible", "options": ["absurd", "daft", "goofy", "sensible"] }
+  },
+  {
+    "term": "adjacent",
+    "definition": "Next to or adjoining something else.",
+    "synonyms": { "correct": "adjoining", "options": ["adjoining", "remote", "separate", "distant"] },
+    "antonyms": { "correct": "distant", "options": ["nearby", "neighbouring", "close", "distant"] }
+  },
+  {
+    "term": "divine",
+    "definition": "Of or like a god; heavenly.",
+    "synonyms": { "correct": "sacred", "options": ["sacred", "earthly", "mundane", "tangible"] },
+    "antonyms": { "correct": "profane", "options": ["holy", "celestial", "sacred", "profane"] }
+  },
+  {
+    "term": "whinging",
+    "definition": "Complaining in an annoying or peevish way.",
+    "synonyms": { "correct": "complaining", "options": ["complaining", "laughing", "praising", "singing"] },
+    "antonyms": { "correct": "praising", "options": ["moaning", "carping", "griping", "praising"] }
+  },
+  {
+    "term": "withhold",
+    "definition": "To refuse to give or keep back something.",
+    "synonyms": { "correct": "retain", "options": ["retain", "release", "yield", "reveal"] },
+    "antonyms": { "correct": "release", "options": ["keep", "retain", "reserve", "release"] }
+  },
+  {
+    "term": "hoard",
+    "definition": "To store up and keep a large amount, often secretly.",
+    "synonyms": { "correct": "stockpile", "options": ["stockpile", "scatter", "squander", "discard"] },
+    "antonyms": { "correct": "distribute", "options": ["amass", "collect", "store", "distribute"] }
+  },
+  {
+    "term": "hackneyed",
+    "definition": "Overused and lacking freshness; clichéd.",
+    "synonyms": { "correct": "trite", "options": ["trite", "novel", "fresh", "original"] },
+    "antonyms": { "correct": "original", "options": ["stale", "corny", "threadbare", "original"] }
+  },
+  {
+    "term": "self-effacing",
+    "definition": "Not drawing attention to oneself; modest.",
+    "synonyms": { "correct": "modest", "options": ["modest", "arrogant", "flashy", "boastful"] },
+    "antonyms": { "correct": "boastful", "options": ["humble", "quiet", "retiring", "boastful"] }
+  },
+  {
+    "term": "symbol",
+    "definition": "A thing that represents or stands for something else.",
+    "synonyms": { "correct": "emblem", "options": ["emblem", "noise", "literal", "smell"] },
+    "antonyms": { "correct": "literal", "options": ["icon", "token", "emblem", "literal"] }
+  },
+  {
+    "term": "sociable",
+    "definition": "Friendly and enjoying the company of others.",
+    "synonyms": { "correct": "gregarious", "options": ["gregarious", "hostile", "aloof", "shy"] },
+    "antonyms": { "correct": "unsociable", "options": ["amiable", "friendly", "outgoing", "unsociable"] }
+  },
+  {
+    "term": "helix",
+    "definition": "A spiral curve like a spring or coil.",
+    "synonyms": { "correct": "spiral", "options": ["spiral", "grid", "cube", "line"] },
+    "antonyms": { "correct": "straight line", "options": ["coil", "twist", "whorl", "straight line"] }
+  },
+  {
+    "term": "cunning",
+    "definition": "Skilful at achieving aims by deceit or cleverness.",
+    "synonyms": { "correct": "crafty", "options": ["crafty", "naive", "clumsy", "obvious"] },
+    "antonyms": { "correct": "naive", "options": ["sly", "wily", "shrewd", "naive"] }
+  },
+  {
+    "term": "finesse",
+    "definition": "Delicate skill and careful handling; tact.",
+    "synonyms": { "correct": "skill", "options": ["skill", "bluntness", "force", "brutality"] },
+    "antonyms": { "correct": "clumsiness", "options": ["poise", "tact", "dexterity", "clumsiness"] }
+  },
+  {
+    "term": "confiscated",
+    "definition": "Taken away by authority, usually as a penalty.",
+    "synonyms": { "correct": "seized", "options": ["seized", "returned", "donated", "lent"] },
+    "antonyms": { "correct": "returned", "options": ["taken", "impounded", "snatched", "returned"] }
+  },
+  {
+    "term": "reproach",
+    "definition": "To express disapproval; blame.",
+    "synonyms": { "correct": "blame", "options": ["blame", "praise", "reward", "approve"] },
+    "antonyms": { "correct": "praise", "options": ["censure", "scold", "accuse", "praise"] }
+  },
+  {
+    "term": "interested",
+    "definition": "Showing curiosity or concern; engaged.",
+    "synonyms": { "correct": "engaged", "options": ["engaged", "idle", "bored", "distracted"] },
+    "antonyms": { "correct": "indifferent", "options": ["keen", "absorbed", "curious", "indifferent"] }
+  },
+  {
+    "term": "slacken",
+    "definition": "To make or become looser or slower.",
+    "synonyms": { "correct": "loosen", "options": ["loosen", "tighten", "strain", "harden"] },
+    "antonyms": { "correct": "tighten", "options": ["relax", "ease", "slump", "tighten"] }
+  },
+  {
+    "term": "embarrass",
+    "definition": "To cause someone to feel awkward, ashamed, or self-conscious.",
+    "synonyms": { "correct": "mortify", "options": ["mortify", "comfort", "calm", "reassure"] },
+    "antonyms": { "correct": "reassure", "options": ["humiliate", "shame", "upset", "reassure"] }
+  },
+  {
+    "term": "monochrome",
+    "definition": "Consisting of only one colour.",
+    "synonyms": { "correct": "single-coloured", "options": ["single-coloured", "rainbow", "patterned", "chequered"] },
+    "antonyms": { "correct": "multicoloured", "options": ["plain", "pale", "faded", "multicoloured"] }
+  },
+  {
+    "term": "recalcitrant",
+    "definition": "Stubbornly disobedient; resisting authority.",
+    "synonyms": { "correct": "defiant", "options": ["defiant", "obedient", "docile", "pliant"] },
+    "antonyms": { "correct": "compliant", "options": ["refractory", "resistant", "stubborn", "compliant"] }
+  },
+  {
+    "term": "immediate",
+    "definition": "Happening or done at once; without delay.",
+    "synonyms": { "correct": "instant", "options": ["instant", "gradual", "eventual", "postponed"] },
+    "antonyms": { "correct": "delayed", "options": ["prompt", "swift", "rapid", "delayed"] }
+  },
+  {
+    "term": "contemporary",
+    "definition": "Belonging to the present; modern; living at the same time.",
+    "synonyms": { "correct": "modern", "options": ["modern", "ancient", "antique", "archaic"] },
+    "antonyms": { "correct": "ancient", "options": ["current", "present-day", "new", "ancient"] }
+  },
+  {
+    "term": "pretence",
+    "definition": "An attempt to make something that is not true appear true; a false show.",
+    "synonyms": { "correct": "sham", "options": ["sham", "honesty", "truth", "reality"] },
+    "antonyms": { "correct": "sincerity", "options": ["deceit", "fraud", "affectation", "sincerity"] }
+  }
+]
