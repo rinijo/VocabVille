@@ -14,33 +14,54 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
+env:
+  # 👇 CHANGE THIS:
+  # If package.json is at repo root, set to "."
+  # If it's in a subfolder (e.g. "web" or "app"), set to that path
+  APP_DIR: "."
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # Debug: show where we are and what's in APP_DIR
+      - name: Show repo tree
+        run: |
+          pwd
+          ls -la
+          echo "---- APP_DIR contents ----"
+          ls -la "$APP_DIR"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
 
-      - run: npm ci
-      - run: npm run build
+      # Use npm ci only if you commit package-lock.json; otherwise use npm install
+      - name: Install deps
+        run: |
+          if [ -f "$APP_DIR/package-lock.json" ]; then
+            npm ci --prefix "$APP_DIR"
+          else
+            npm install --prefix "$APP_DIR"
+          fi
 
-      # Turn it into a proper SPA on Pages:
-      # 1) Serve from client output only
-      # 2) Copy index.html -> 404.html so deep links work
-      # 3) Disable Jekyll so /assets/* aren’t mangled
+      - name: Build
+        run: npm run build --prefix "$APP_DIR"
+
+      # SPA fallback + disable Jekyll
       - name: Prepare Pages artifact
         run: |
-          cp -f build/client/index.html build/client/404.html
-          touch build/client/.nojekyll
+          cp -f "$APP_DIR/build/client/index.html" "$APP_DIR/build/client/404.html"
+          touch "$APP_DIR/build/client/.nojekyll"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/client
+          path: ${{ env.APP_DIR }}/build/client
 
   deploy:
     runs-on: ubuntu-latest
