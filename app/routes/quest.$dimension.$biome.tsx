@@ -81,7 +81,7 @@ function speak(text: string) {
   } catch {}
 }
 
-// Progress helpers
+// -------- Progress helpers --------
 function loadProgress(dim: string, biome: string): ProgressMap {
   try {
     const raw = localStorage.getItem(progressKey(dim, biome));
@@ -92,11 +92,27 @@ function loadProgress(dim: string, biome: string): ProgressMap {
 function saveProgress(dim: string, biome: string, map: ProgressMap) {
   localStorage.setItem(progressKey(dim, biome), JSON.stringify(map));
 }
+
+function isTypeRetiredByCount(p: ProgressCounters | undefined, type: QAType): boolean {
+  if (!p) return false;
+  return (p[type] || 0) >= 5; // retire this type at 5+
+}
+function isWordRetiredByCounts(p: ProgressCounters | undefined): boolean {
+  if (!p) return false;
+  return (p.spelling || 0) >= 5 && (p.synonym || 0) >= 5 && (p.antonym || 0) >= 5;
+}
+
 function bumpProgress(dim: string, biome: string, word: string, type: QAType): ProgressMap {
   const map = loadProgress(dim, biome);
   const w = (map[word] ||= { spelling: 0, synonym: 0, antonym: 0, retired: false });
   w[type] += 1;
+
+  // Original rule: retire when all three reach ≥3
   if (w.spelling >= 3 && w.synonym >= 3 && w.antonym >= 3) w.retired = true;
+
+  // New additive rule: retire whole word when all three reach ≥5
+  if (w.spelling >= 5 && w.synonym >= 5 && w.antonym >= 5) w.retired = true;
+
   saveProgress(dim, biome, map);
   return map;
 }
@@ -143,12 +159,11 @@ function awardNetherite() {
   state.lifetime.netherite = (state.lifetime.netherite || 0) + 1;
   state.current.netherite  = (state.current.netherite  || 0) + 1;
 
-  console.log("[award] +1 netherite", state);
   localStorage.setItem(STATS_KEY, JSON.stringify(state));
   try { window.dispatchEvent(new StorageEvent("storage", { key: STATS_KEY })); } catch {}
 }
 
-// Build questions from JSON record
+// -------- Question builders --------
 function buildSpellingQuestion(w: JsonWord): Question {
   const correct = w.term;
   const bads = misspellingsOf(correct);
@@ -188,10 +203,15 @@ function buildAntonymQuestion(w: JsonWord): Question | null {
     correctIndex: shuffledOpts.findIndex((o) => o === correct),
   };
 }
-function buildQuestionFrom(w: JsonWord): Question {
-  const types: QAType[] = ["spelling"];
-  if (w.synonyms?.options?.length) types.push("synonym");
-  if (w.antonyms?.options?.length) types.push("antonym");
+
+// Type-aware builder (skip retired types for this word)
+function buildQuestionFrom(w: JsonWord, prog?: ProgressCounters): Question | null {
+  const types: QAType[] = [];
+  if (!isTypeRetiredByCount(prog, "spelling")) types.push("spelling");
+  if (w.synonyms?.options?.length && !isTypeRetiredByCount(prog, "synonym")) types.push("synonym");
+  if (w.antonyms?.options?.length && !isTypeRetiredByCount(prog, "antonym")) types.push("antonym");
+  if (types.length === 0) return null;
+
   const t = types[randInt(types.length)];
   if (t === "synonym") return buildSynonymQuestion(w) ?? buildSpellingQuestion(w);
   if (t === "antonym") return buildAntonymQuestion(w) ?? buildSpellingQuestion(w);
@@ -237,35 +257,57 @@ export default function QuestPage() {
     return () => { aborted = true; };
   }, [dimension, biome]);
 
-  // Build 10 Qs ONCE per session, after words load (not dependent on progress)
+  // Build 10 Qs ONCE per session, after words load
   React.useEffect(() => {
     if (!words.length) {
       setQuestions([]);
       return;
     }
 
-    // Take a snapshot of current progress only to exclude retired words at session start
+    // Snapshot current progress to apply retirement rules
     const progressSnapshot = loadProgress(dimension, biome);
-    const retired = new Set<string>(
+
+    // Word-level retirement: explicit retired OR 5+/5+/5+ rule
+    const retiredTerms = new Set<string>(
       Object.entries(progressSnapshot)
-        .filter(([, v]) => v.retired)
+        .filter(([, v]) => v.retired || isWordRetiredByCounts(v))
         .map(([k]) => k)
     );
 
-    const pool = words.filter(w => !retired.has(w.term));
-    const source = pool.length ? pool : words; // if all retired, still play
+    // Keep words that either aren't fully retired and still have at least one non-retired type
+    const eligibleWords = words.filter((w) => {
+      if (retiredTerms.has(w.term)) return false;
+      const p = progressSnapshot[w.term];
+      const hasAnyType =
+        !isTypeRetiredByCount(p, "spelling") ||
+        (w.synonyms?.options?.length && !isTypeRetiredByCount(p, "synonym")) ||
+        (w.antonyms?.options?.length && !isTypeRetiredByCount(p, "antonym"));
+      return hasAnyType;
+    });
+
+    const source = eligibleWords.length ? eligibleWords : words;
 
     const qs: Question[] = [];
-    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+    let guard = 0;
+    while (qs.length < TOTAL_QUESTIONS && guard < TOTAL_QUESTIONS * 20) {
       const w = source[randInt(source.length)];
-      qs.push(buildQuestionFrom(w));
+      const q = buildQuestionFrom(w, progressSnapshot[w.term]);
+      if (q) qs.push(q);
+      guard++;
+    }
+
+    // Final fallback to avoid a blank screen if everything is retired
+    if (qs.length === 0) {
+      for (let i = 0; i < Math.min(TOTAL_QUESTIONS, words.length || 10); i++) {
+        qs.push(buildSpellingQuestion(words[i % words.length]));
+      }
     }
 
     setQuestions(qs);
     setQIndex(0);
     setScore(0);
     setMessage("");
-    // status stays "idle"; timer effect below flips it to "playing"
+    // status stays "idle"; timer effect flips it to "playing"
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words, dimension, biome]);
 
@@ -322,7 +364,7 @@ export default function QuestPage() {
     }
 
     setScore((s) => s + 1);
-    // (We update retirement counters quietly; not used to rebuild this session.)
+    // Update counters (type retirement handled next session via snapshot)
     bumpProgress(dimension, biome, q.word, q.type);
 
     if (qIndex + 1 >= questions.length) {
@@ -330,7 +372,7 @@ export default function QuestPage() {
         setStatus("won");
         setMessage("✅ Perfect! You saved the villagers and earned 1 ⬛ Netherite!");
         setRunning(false);
-        awardNetherite(); // <-- writes nested vv_stats_v2 and logs to console
+        awardNetherite();
       } else {
         setStatus("lost");
         setMessage("⏰ Time’s up just as you finished!");
@@ -361,8 +403,8 @@ export default function QuestPage() {
     if (prepLeft > 0) {
       return (
         <div style={{ opacity: 0.9 }}>
-          <h3 style={{ marginTop: 0 }}>Get Ready…</h3>
-          <p>Quest starts in <b>{prepLeft}</b>…</p>
+          <h3 style={{ marginTop: 0, color: "white" }}>Get Ready…</h3>
+          <p style={{ color: "white" }}>Quest starts in <b>{prepLeft}</b>…</p>
         </div>
       );
     }
@@ -372,10 +414,11 @@ export default function QuestPage() {
 
     return (
       <div style={{ width: "100%" }}>
-        <div style={{ marginBottom: 10, opacity: 0.9 }}>
+        <div style={{ marginBottom: 10, opacity: 0.9, color: "white" }}>
           Question {qIndex + 1} of {Math.max(questions.length, 10)}
         </div>
 
+        {/* Solid card so only the question area has a background */}
         <div style={{ background: "#f4d88a", color: "#000", borderRadius: 12, padding: 16, boxShadow: "0 6px 0 #000", marginBottom: 14 }}>
           <div style={{ marginBottom: 10 }}>
             {q.type === "spelling" ? (
@@ -408,7 +451,7 @@ export default function QuestPage() {
           </div>
         </div>
 
-        <div style={{ fontSize: 12, opacity: 0.85 }}>
+        <div style={{ fontSize: 12, opacity: 0.85, color: "white" }}>
           {q.type === "spelling"
             ? "Listen carefully and choose the correct spelling."
             : q.type === "synonym"
@@ -438,24 +481,90 @@ export default function QuestPage() {
           minHeight: "100svh",
         }}
       >
-        <div style={{ gridArea: "leftTop", background: "forestgreen", margin: 4, padding: "1rem", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-          <p style={{ fontFamily: "'Press Start 2P', system-ui, sans-serif", fontSize: "clamp(12px, 2vw, 18px)", lineHeight: 1.6, textShadow: "1px 1px 0 #000", color: "#000" }}>
+        {/* Left top — content pinned to bottom */}
+        <div
+          style={{
+            gridArea: "leftTop",
+            margin: 4,
+            padding: "1rem",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            textAlign: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <p
+            style={{
+              pointerEvents: "auto",
+              fontFamily: "'Press Start 2P', system-ui, sans-serif",
+              fontSize: "clamp(12px, 2vw, 18px)",
+              lineHeight: 1.6,
+              textShadow: "1px 1px 0 #000",
+              margin: 0,
+            }}
+          >
             THE VILLAGE IS UNDER ATTACK!
             <br /><br />
             ⚡ A horde of creepers is closing in on the village!
             <br /><br />
-            🛡️ Answer 10 questions in 30 seconds to save the villagers and earn a Netherite reward!
+            🛡️ Answer 10 questions in 3 minutes to save the villagers and earn a Netherite reward!
           </p>
         </div>
 
-        <div style={{ gridArea: "leftBottom", background: "forestgreen", margin: 4, padding: "1rem", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1.5rem", fontFamily: "'Press Start 2P', system-ui, sans-serif", color: "#000" }}>
-          <div style={{ fontSize: "clamp(23px, 5vw, 33px)", textShadow: "2px 2px 0 #000" }}>Score: <b>{score}</b>/10</div>
-          <div style={{ width: 160, height: 160, borderRadius: "50%", background: "#3c8527", border: "6px solid #1b1b1b", boxShadow: "0 6px 0 #2c611d, 0 8px 0 #000", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "clamp(24px, 6vw, 40px)", color: "#fff", textShadow: "2px 2px 0 #000" }}>
+        {/* Left bottom — content pinned to top */}
+        <div
+          style={{
+            gridArea: "leftBottom",
+            margin: 4,
+            padding: "1rem",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            gap: "1.0rem",
+            fontFamily: "'Press Start 2P', system-ui, sans-serif",
+          }}
+        >
+          <div style={{ fontSize: "clamp(23px, 5vw, 33px)", textShadow: "2px 2px 0 #000", marginTop: 0 }}>
+            Score: <b>{score}</b>/10
+          </div>
+          <div
+            style={{
+              width: 160,
+              height: 160,
+              borderRadius: "50%",
+              background: "#3c8527",
+              border: "6px solid #1b1b1b",
+              boxShadow: "0 6px 0 #2c611d, 0 8px 0 #000",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "clamp(24px, 6vw, 40px)",
+              color: "#fff",
+              textShadow: "2px 2px 0 #000",
+            }}
+          >
             {prepLeft > 0 ? `:${prepLeft}` : `${timeLeft}`}
           </div>
         </div>
 
-        <div style={{ gridArea: "right", background: "saddlebrown", margin: 4, padding: "1rem", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Press Start 2P', system-ui, sans-serif", fontSize: "clamp(12px, 2vw, 18px)", color: "#000", textAlign: "center" }}>
+        {/* Right — transparent panel so Creeper anim shows; only the card inside is solid */}
+        <div
+          style={{
+            gridArea: "right",
+            margin: 4,
+            padding: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "'Press Start 2P', system-ui, sans-serif",
+            fontSize: "clamp(12px, 2vw, 18px)",
+            color: "#000",
+            textAlign: "center",
+            background: "transparent",
+          }}
+        >
           <RightPanel />
         </div>
       </div>

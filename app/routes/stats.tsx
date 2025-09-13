@@ -171,7 +171,7 @@ export default function StatsPage() {
         </nav>
 
         <header className="header">
-          <h1 style={{ margin: 0, marginBottom: 20 }}>Stats & Swaps</h1>
+          <h1 style={{ margin: 0, marginBottom: 20, marginTop: 40 }}>Stats & Swaps</h1>
           <span style={{ fontSize: 14 }}>5 ⛏️ = 1 💎 | 5 💎 = 1 ⬛ | 10 ⬛ = 30 min 🎮</span>
         </header>
 

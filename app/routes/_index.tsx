@@ -20,7 +20,7 @@ export default function Index() {
 
           {/* Locked */}
           <McButton locked>The Nether</McButton>
-          <McButton locked>TheEnd</McButton>
+          <McButton locked>The End</McButton>
 
           {/* Special Stats Button */}
           <Link
