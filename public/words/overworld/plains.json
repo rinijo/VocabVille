@@ -27,7 +27,7 @@
     "term": "environment",
     "definition": "The surroundings or conditions in which a person, animal, or plant lives.",
     "synonyms": { "correct": "surroundings", "options": ["surroundings", "ingredient", "vacuum", "interior"] },
-    "antonyms": { "correct": "vacuum", "options": ["habitat", "setting", "milieu", "vacuum"] }
+    "antonyms": { "correct": "nothingness", "options": ["habitat", "setting", "milieu", "nothingness"] }
   },
   {
     "term": "integrity",
@@ -87,7 +87,7 @@
     "term": "self-effacing",
     "definition": "Not drawing attention to oneself; modest.",
     "synonyms": { "correct": "modest", "options": ["modest", "arrogant", "flashy", "boastful"] },
-    "antonyms": { "correct": "boastful", "options": ["humble", "quiet", "retiring", "boastful"] }
+    "antonyms": { "correct": "arrogant", "options": ["humble", "quiet", "retiring", "arrogant"] }
   },
   {
     "term": "symbol",
