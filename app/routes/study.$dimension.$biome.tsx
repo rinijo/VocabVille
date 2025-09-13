@@ -263,9 +263,6 @@ export default function StudyPage() {
               <div>
                 <div className="badge badge--overworld">{name}</div>
                 <h2 style={{ margin: ".25rem 0 .5rem" }}>{blurb}</h2>
-                <div style={{ fontSize: 12, opacity: .85 }}>
-                  Completed once: <b>{completedOnceCount}</b> / {words.length} · Mastered: <b>{masteredCount}</b>
-                </div>
               </div>
               <div className="study-nav">
                 <button className="mc-btn" onClick={() => setIdx(i => (i > 0 ? i - 1 : pool.length - 1))}>◀ Prev</button>

@@ -33,6 +33,7 @@ type Question = {
 
 // Storage keys
 const STATS_KEY = "vv_stats_v2";
+const STREAK_KEY = "vv_streak_v1";
 const progressKey = (dim: string, biome: string) => `vv_progress_${dim}_${biome}`;
 
 // Utils
@@ -81,6 +82,58 @@ function speak(text: string) {
   } catch {}
 }
 
+// -------- Daily streak helpers (attempt-based) --------
+type Streak = { lastDate: string | null; count: number };
+
+function ymd(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function todayYMD() { return ymd(new Date()); }
+function yesterdayYMD() { return ymd(new Date(Date.now() - 24 * 60 * 60 * 1000)); }
+
+function readStreak(): Streak {
+  try {
+    const raw = localStorage.getItem(STREAK_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && typeof s.count === "number") {
+        return { lastDate: s.lastDate ?? null, count: s.count | 0 };
+      }
+    }
+  } catch {}
+  return { lastDate: null, count: 0 };
+}
+function writeStreak(s: Streak) {
+  localStorage.setItem(STREAK_KEY, JSON.stringify(s));
+  try { window.dispatchEvent(new StorageEvent("storage", { key: STREAK_KEY })); } catch {}
+}
+
+/** Count an attempt for today. On 7-day streak, award +1 Diamond and reset to 0. */
+function recordAttemptAndMaybeAwardDiamond() {
+  const today = todayYMD();
+  const yesterday = yesterdayYMD();
+  const s = readStreak();
+
+  // Already counted today? Do nothing.
+  if (s.lastDate === today) return;
+
+  let nextCount = 1;
+  if (s.lastDate === yesterday) {
+    nextCount = (s.count | 0) + 1;
+  }
+
+  // Award at 7 consecutive days, then reset to 0 (start next cycle)
+  if (nextCount >= 7) {
+    awardDiamond();
+    writeStreak({ lastDate: today, count: 0 });
+  } else {
+    writeStreak({ lastDate: today, count: nextCount });
+  }
+}
+
 // -------- Progress helpers --------
 function loadProgress(dim: string, biome: string): ProgressMap {
   try {
@@ -93,31 +146,136 @@ function saveProgress(dim: string, biome: string, map: ProgressMap) {
   localStorage.setItem(progressKey(dim, biome), JSON.stringify(map));
 }
 
+// Per-type retirement (≥5 correct for that type)
 function isTypeRetiredByCount(p: ProgressCounters | undefined, type: QAType): boolean {
   if (!p) return false;
-  return (p[type] || 0) >= 5; // retire this type at 5+
+  return (p[type] || 0) >= 5;
 }
+// Whole-word retirement when all three are ≥5
 function isWordRetiredByCounts(p: ProgressCounters | undefined): boolean {
   if (!p) return false;
   return (p.spelling || 0) >= 5 && (p.synonym || 0) >= 5 && (p.antonym || 0) >= 5;
 }
 
+// ---- NEW: award a pickaxe once when a word becomes retired ----
+function awardPickaxe() {
+  const defaults = {
+    lifetime: { pickaxe: 0, diamond: 0, netherite: 0, playMinutes: 0 },
+    current:  { pickaxe: 0, diamond: 0, netherite: 0 },
+  };
+
+  let state = { ...defaults };
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // legacy flat {pickaxe, diamond, netherite}
+      if (
+        parsed && typeof parsed === "object" &&
+        !parsed.lifetime && !parsed.current &&
+        typeof parsed.pickaxe === "number" &&
+        typeof parsed.diamond === "number" &&
+        typeof parsed.netherite === "number"
+      ) {
+        state = {
+          lifetime: { ...defaults.lifetime },
+          current:  {
+            pickaxe: parsed.pickaxe | 0,
+            diamond: parsed.diamond | 0,
+            netherite: parsed.netherite | 0,
+          },
+        };
+      } else {
+        state = {
+          lifetime: { ...defaults.lifetime, ...(parsed?.lifetime || {}) },
+          current:  { ...defaults.current,  ...(parsed?.current  || {}) },
+        };
+      }
+    }
+  } catch {}
+
+  state.lifetime.pickaxe = (state.lifetime.pickaxe || 0) + 1;
+  state.current.pickaxe  = (state.current.pickaxe  || 0) + 1;
+
+  localStorage.setItem(STATS_KEY, JSON.stringify(state));
+  try { window.dispatchEvent(new StorageEvent("storage", { key: STATS_KEY })); } catch {}
+}
+
+/**
+ * Increment progress and apply retirement rules.
+ * If the word transitions from NOT retired to retired in this call,
+ * award +1 pickaxe exactly once.
+ */
 function bumpProgress(dim: string, biome: string, word: string, type: QAType): ProgressMap {
   const map = loadProgress(dim, biome);
   const w = (map[word] ||= { spelling: 0, synonym: 0, antonym: 0, retired: false });
+
+  // Retirement status BEFORE increment, considering both rules
+  const prevFullyRetired =
+    !!w.retired || (w.spelling >= 3 && w.synonym >= 3 && w.antonym >= 3) || isWordRetiredByCounts(w);
+
+  // Apply increment
   w[type] += 1;
 
-  // Original rule: retire when all three reach ≥3
-  if (w.spelling >= 3 && w.synonym >= 3 && w.antonym >= 3) w.retired = true;
+  // Apply rules AFTER increment
+  const nowThreeOfThree = w.spelling >= 3 && w.synonym >= 3 && w.antonym >= 3;
+  const nowAllFive = isWordRetiredByCounts(w);
 
-  // New additive rule: retire whole word when all three reach ≥5
-  if (w.spelling >= 5 && w.synonym >= 5 && w.antonym >= 5) w.retired = true;
+  if (nowThreeOfThree || nowAllFive) {
+    w.retired = true;
+  }
+
+  const newFullyRetired = !!w.retired || nowThreeOfThree || nowAllFive;
+
+  // If it just became retired this call, award +1 pickaxe
+  if (!prevFullyRetired && newFullyRetired) {
+    awardPickaxe();
+  }
 
   saveProgress(dim, biome, map);
   return map;
 }
 
-// Award netherite on win (robust init + legacy flat migration)
+// -------- Awards to stats --------
+function awardDiamond() {
+  const defaults = {
+    lifetime: { pickaxe: 0, diamond: 0, netherite: 0, playMinutes: 0 },
+    current:  { pickaxe: 0, diamond: 0, netherite: 0 },
+  };
+
+  let state = { ...defaults };
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // legacy flat
+      if (
+        parsed && typeof parsed === "object" &&
+        !parsed.lifetime && !parsed.current &&
+        typeof parsed.pickaxe === "number" &&
+        typeof parsed.diamond === "number" &&
+        typeof parsed.netherite === "number"
+      ) {
+        state = {
+          lifetime: { ...defaults.lifetime },
+          current:  { pickaxe: parsed.pickaxe|0, diamond: parsed.diamond|0, netherite: parsed.netherite|0 },
+        };
+      } else {
+        state = {
+          lifetime: { ...defaults.lifetime, ...(parsed?.lifetime || {}) },
+          current:  { ...defaults.current,  ...(parsed?.current  || {}) },
+        };
+      }
+    }
+  } catch {}
+
+  state.lifetime.diamond = (state.lifetime.diamond || 0) + 1;
+  state.current.diamond  = (state.current.diamond  || 0) + 1;
+
+  localStorage.setItem(STATS_KEY, JSON.stringify(state));
+  try { window.dispatchEvent(new StorageEvent("storage", { key: STATS_KEY })); } catch {}
+}
+
 function awardNetherite() {
   const defaults = {
     lifetime: { pickaxe: 0, diamond: 0, netherite: 0, playMinutes: 0 },
@@ -139,7 +297,7 @@ function awardNetherite() {
       ) {
         state = {
           lifetime: { ...defaults.lifetime },
-          current: {
+          current:  {
             pickaxe: parsed.pickaxe | 0,
             diamond: parsed.diamond | 0,
             netherite: parsed.netherite | 0,
@@ -152,9 +310,7 @@ function awardNetherite() {
         };
       }
     }
-  } catch {
-    // ignore parse errors, keep defaults
-  }
+  } catch {}
 
   state.lifetime.netherite = (state.lifetime.netherite || 0) + 1;
   state.current.netherite  = (state.current.netherite  || 0) + 1;
@@ -311,8 +467,11 @@ export default function QuestPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words, dimension, biome]);
 
-  // Timer lifecycle (prep → play)
+  // Timer lifecycle (prep → play) + count attempt for streak once per visit
   React.useEffect(() => {
+    // Count today's attempt immediately on entering a quest page.
+    recordAttemptAndMaybeAwardDiamond();
+
     let prepInterval: number | undefined;
     let runInterval: number | undefined;
 
@@ -364,7 +523,7 @@ export default function QuestPage() {
     }
 
     setScore((s) => s + 1);
-    // Update counters (type retirement handled next session via snapshot)
+    // Update counters + (maybe) auto-award ⛏️ if this answer retires the word
     bumpProgress(dimension, biome, q.word, q.type);
 
     if (qIndex + 1 >= questions.length) {

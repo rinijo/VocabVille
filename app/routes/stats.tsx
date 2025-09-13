@@ -19,6 +19,7 @@ type Action =
   | { type: "REDEEM_NETHERITE_TO_PLAY" };
 
 const STORAGE_KEY = "vv_stats_v2";
+const STREAK_KEY = "vv_streak_v1";
 
 const initialState: State = {
   lifetime: { pickaxe: 0, diamond: 0, netherite: 0, playMinutes: 0 },
@@ -138,6 +139,21 @@ function usePersistentState() {
   return { state, dispatch };
 }
 
+// -------- Streak state (read-only here) --------
+type Streak = { lastDate: string | null; count: number };
+
+function readStreak(): Streak {
+  try {
+    const raw = localStorage.getItem(STREAK_KEY);
+    if (!raw) return { lastDate: null, count: 0 };
+    const s = JSON.parse(raw);
+    if (s && typeof s.count === "number") {
+      return { lastDate: s.lastDate ?? null, count: s.count | 0 };
+    }
+  } catch {}
+  return { lastDate: null, count: 0 };
+}
+
 function minutesToHHMM(mins: number) {
   const h = Math.floor(mins / 60);
   const m = Math.floor(mins % 60);
@@ -146,6 +162,21 @@ function minutesToHHMM(mins: number) {
 
 export default function StatsPage() {
   const { state, dispatch } = usePersistentState();
+
+  // streak UI bits
+  const [streak, setStreak] = React.useState<Streak>(() => readStreak());
+  React.useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key !== STREAK_KEY || e.storageArea !== localStorage) return;
+      setStreak(readStreak());
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  // Also load once on mount (in case this page opens first)
+  React.useEffect(() => { setStreak(readStreak()); }, []);
+
+  const daysUntilDiamond = Math.max(0, 7 - (streak.count || 0));
 
   const canPXtoOB   = Math.floor(state.current.pickaxe / PICKAXES_PER_DIAMOND);
   const canOBtoNE   = Math.floor(state.current.diamond / DIAMOND_PER_NETHERITE);
@@ -163,6 +194,8 @@ export default function StatsPage() {
         .row { display: flex; flex-wrap: wrap; gap: 12px; }
         .btn { padding: 10px 14px; border-radius: 8px; border: none; background: forestgreen; color: white; font-size: 14px; cursor: pointer; }
         .btn[disabled] { opacity: .5; cursor: not-allowed; }
+        .rules-list { margin: 8px 0 0; padding-left: 18px; font-size: small; }
+        .rules-list li { margin: 6px 0; }
       `}</style>
 
       <main className="stats-wrap">
@@ -174,6 +207,45 @@ export default function StatsPage() {
           <h1 style={{ margin: 0, marginBottom: 20, marginTop: 40 }}>Stats & Swaps</h1>
           <span style={{ fontSize: 14 }}>5 ⛏️ = 1 💎 | 5 💎 = 1 ⬛ | 10 ⬛ = 30 min 🎮</span>
         </header>
+
+        {/* Daily Streak */}
+        <section className="card">
+          <h2 className="section-title">Daily Quest Streak</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+            <div>
+              <div style={{ opacity: 0.85, fontSize: 13 }}>Current streak</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 10 }}>{streak.count} day{streak.count === 1 ? "" : "s"}</div>
+            </div>
+            <div>
+              <div style={{ opacity: 0.85, fontSize: 13 }}>Last attempt</div>
+              <div style={{ fontSize: 18, marginTop: 10 }}>{streak.lastDate ?? "—"}</div>
+            </div>
+            <div>
+              <div style={{ opacity: 0.85, fontSize: 13 }}>Days until next 💎</div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 10 }}>{daysUntilDiamond}</div>
+            </div>
+          </div>
+          <div style={{ marginTop: 8, opacity: 0.85, fontSize: 12 }}>
+            Attempt any quest once per day. Hit 7 in a row to earn a Diamond — the counter then resets to start the next cycle.
+          </div>
+        </section>
+
+        {/* How to earn rewards */}
+        <section className="card">
+          <h2 className="section-title">How to Earn Rewards</h2>
+          <ul className="rules-list">
+            <li>
+              ⛏️ Pickaxe — awarded automatically when you fully learn a word:
+              get the spelling, synonym and antonym correct enough to retire that word.
+            </li>
+            <li>
+              ⬛ Netherite — awarded when you complete a quest successfully.
+            </li>
+            <li>
+              💎 Diamond — awarded for a 7-day Daily Quest Streak (attempt a quest each day).
+            </li>
+          </ul>
+        </section>
 
         {/* Inventory */}
         <section className="card">
