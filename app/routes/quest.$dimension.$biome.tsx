@@ -3,49 +3,265 @@ import { Link, useParams } from "react-router-dom";
 import CreeperBg from "../components/CreeperBg";
 
 const BASE = import.meta.env.BASE_URL;
-const TITLECASE = (s: string) =>
-  s.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+
+type QAType = "spelling" | "synonym" | "antonym";
+
+/** JSON shape in public/words/<dimension>/<biome>.json */
+type JsonWord = {
+  term: string;
+  definition?: string;
+  synonyms?: { correct: string; options: string[] };
+  antonyms?: { correct: string; options: string[] };
+};
+
+type ProgressCounters = {
+  spelling: number;
+  synonym: number;
+  antonym: number;
+  retired?: boolean;
+};
+type ProgressMap = Record<string, ProgressCounters>;
+
+type Question = {
+  type: QAType;
+  word: string;
+  prompt: string;
+  options: string[];      // 4 options, 1 correct
+  correctIndex: number;
+  speakable?: string;     // for spelling
+};
+
+// Storage keys
+const statsKey = "vv_stats_v2";
+const progressKey = (dim: string, biome: string) => `vv_progress_${dim}_${biome}`;
+
+// Utils
+const randInt = (n: number) => Math.floor(Math.random() * n);
+const shuffled = <T,>(arr: T[]) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = randInt(i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+function misspellingsOf(word: string): string[] {
+  const outs = new Set<string>();
+  const lower = word.toLowerCase();
+  const vowels = new Set(["a", "e", "i", "o", "u"]);
+  // swap neighbors
+  for (let i = 0; i < lower.length - 1; i++) {
+    outs.add(lower.slice(0, i) + lower[i + 1] + lower[i] + lower.slice(i + 2));
+    if (outs.size >= 5) break;
+  }
+  // drop a vowel
+  for (let i = 0; i < lower.length; i++) {
+    if (vowels.has(lower[i])) outs.add(lower.slice(0, i) + lower.slice(i + 1));
+    if (outs.size >= 8) break;
+  }
+  // double a consonant
+  for (let i = 0; i < lower.length; i++) {
+    const c = lower[i];
+    if (!vowels.has(c) && /[a-z]/.test(c)) outs.add(lower.slice(0, i + 1) + c + lower.slice(i + 1));
+    if (outs.size >= 12) break;
+  }
+  outs.delete(lower);
+  return Array.from(outs);
+}
+
+function speak(text: string) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.9;
+    u.pitch = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch {}
+}
+
+// Progress helpers
+function loadProgress(dim: string, biome: string): ProgressMap {
+  try {
+    const raw = localStorage.getItem(progressKey(dim, biome));
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+function saveProgress(dim: string, biome: string, map: ProgressMap) {
+  localStorage.setItem(progressKey(dim, biome), JSON.stringify(map));
+}
+function bumpProgress(dim: string, biome: string, word: string, type: QAType): ProgressMap {
+  const map = loadProgress(dim, biome);
+  const w = (map[word] ||= { spelling: 0, synonym: 0, antonym: 0, retired: false });
+  w[type] += 1;
+  if (w.spelling >= 3 && w.synonym >= 3 && w.antonym >= 3) w.retired = true;
+  saveProgress(dim, biome, map);
+  return map;
+}
+
+// Award netherite on win
+function awardNetherite() {
+  try {
+    const raw = localStorage.getItem(statsKey);
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    state.lifetime ||= { pickaxe: 0, diamond: 0, netherite: 0, playMinutes: 0 };
+    state.current ||= { pickaxe: 0, diamond: 0, netherite: 0 };
+    state.lifetime.netherite = (state.lifetime.netherite || 0) + 1;
+    state.current.netherite = (state.current.netherite || 0) + 1;
+    localStorage.setItem(statsKey, JSON.stringify(state));
+  } catch {}
+}
+
+// Build questions from JSON record
+function buildSpellingQuestion(w: JsonWord): Question {
+  const correct = w.term;
+  const bads = misspellingsOf(correct);
+  const opts = shuffled([correct, ...shuffled(bads).slice(0, 3)]);
+  return {
+    type: "spelling",
+    word: w.term,
+    prompt: "Spell the word you hear:",
+    options: opts,
+    correctIndex: opts.findIndex((o) => o.toLowerCase() === correct.toLowerCase()),
+    speakable: w.term,
+  };
+}
+function buildSynonymQuestion(w: JsonWord): Question | null {
+  if (!w.synonyms || !w.synonyms.options?.length) return null;
+  const opts = [...w.synonyms.options];
+  const correct = w.synonyms.correct;
+  const shuffledOpts = shuffled(opts);
+  return {
+    type: "synonym",
+    word: w.term,
+    prompt: `Choose a synonym of “${w.term}”`,
+    options: shuffledOpts,
+    correctIndex: shuffledOpts.findIndex((o) => o === correct),
+  };
+}
+function buildAntonymQuestion(w: JsonWord): Question | null {
+  if (!w.antonyms || !w.antonyms.options?.length) return null;
+  const opts = [...w.antonyms.options];
+  const correct = w.antonyms.correct;
+  const shuffledOpts = shuffled(opts);
+  return {
+    type: "antonym",
+    word: w.term,
+    prompt: `Choose an antonym of “${w.term}”`,
+    options: shuffledOpts,
+    correctIndex: shuffledOpts.findIndex((o) => o === correct),
+  };
+}
+function buildQuestionFrom(w: JsonWord): Question {
+  const types: QAType[] = ["spelling"];
+  if (w.synonyms?.options?.length) types.push("synonym");
+  if (w.antonyms?.options?.length) types.push("antonym");
+  const t = types[randInt(types.length)];
+  if (t === "synonym") return buildSynonymQuestion(w) ?? buildSpellingQuestion(w);
+  if (t === "antonym") return buildAntonymQuestion(w) ?? buildSpellingQuestion(w);
+  return buildSpellingQuestion(w);
+}
 
 export default function QuestPage() {
   const { dimension = "", biome = "" } = useParams();
 
-  if (!dimension || !biome) {
-    return (
-      <main className="center-wrap">
-        <div className="stack">
-          <h1 className="h1">Unknown quest path</h1>
-          <Link className="mc-btn" to="/">Back to Home</Link>
-        </div>
-      </main>
-    );
-  }
-
-  const bg = `${BASE}images/overworld/${biome}-quest-bg.png`;
-
-  // --- TIMER & SCORE (left bottom) ---
   const PREP_SECONDS = 5;
-  const DURATION_SECONDS = 30;
+  const DURATION_SECONDS = 180;
+  const TOTAL_QUESTIONS = 10;
 
   const [prepLeft, setPrepLeft] = React.useState(PREP_SECONDS);
   const [timeLeft, setTimeLeft] = React.useState(DURATION_SECONDS);
   const [running, setRunning] = React.useState(false);
   const [score, setScore] = React.useState(0);
 
+  const [words, setWords] = React.useState<JsonWord[]>([]);
+  const [progress, setProgress] = React.useState<ProgressMap>({});
+  const [questions, setQuestions] = React.useState<Question[]>([]);
+  const [qIndex, setQIndex] = React.useState(0);
+  const [status, setStatus] = React.useState<"idle" | "playing" | "won" | "lost">("idle");
+  const [message, setMessage] = React.useState("");
+
+  // Load progress & JSON for this biome
+  React.useEffect(() => {
+    setProgress(loadProgress(dimension, biome));
+
+    let aborted = false;
+    const url = `${BASE}words/${dimension}/${biome}.json`;
+    (async () => {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Failed to load words: ${res.status}`);
+        const data: JsonWord[] = await res.json();
+        if (!aborted) setWords(Array.isArray(data) ? data : []);
+      } catch {
+        if (!aborted)
+          setWords([
+            { term: "courage", synonyms: { correct: "bravery", options: ["bravery","fear","panic","doubt"] }, antonyms: { correct: "fear", options: ["fear","valor","boldness","pluck"] } },
+            { term: "ancient", synonyms: { correct: "old", options: ["old","modern","current","new"] }, antonyms: { correct: "modern", options: ["modern","elderly","antique","archaic"] } },
+          ]);
+      }
+    })();
+    return () => { aborted = true; };
+  }, [dimension, biome]);
+
+  // ✅ Build 10 Qs ONCE per session, after words load.
+  // IMPORTANT: Do NOT depend on `progress` here, or you’ll reset mid-quest.
+  React.useEffect(() => {
+    if (!words.length) {
+      setQuestions([]);
+      return;
+    }
+
+    // Snapshot current progress only to exclude retired words at session start
+    const progressSnapshot = loadProgress(dimension, biome);
+    const retired = new Set<string>(
+      Object.entries(progressSnapshot)
+        .filter(([, v]) => v.retired)
+        .map(([k]) => k)
+    );
+
+    const pool = words.filter(w => !retired.has(w.term));
+    const source = pool.length ? pool : words; // if all retired, still play
+
+    const qs: Question[] = [];
+    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+      const w = source[randInt(source.length)];
+      qs.push(buildQuestionFrom(w));
+    }
+
+    setQuestions(qs);
+    setQIndex(0);
+    setScore(0);
+    // Do NOT touch status here; timer effect handles it.
+    setMessage("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [words, dimension, biome]);
+
+  // Timer lifecycle (prep → play)
   React.useEffect(() => {
     let prepInterval: number | undefined;
     let runInterval: number | undefined;
+
+    setPrepLeft(PREP_SECONDS);
+    setTimeLeft(DURATION_SECONDS);
+    setRunning(false);
+    setStatus("idle");
 
     prepInterval = window.setInterval(() => {
       setPrepLeft((p) => {
         if (p <= 1) {
           window.clearInterval(prepInterval);
           setRunning(true);
-          setTimeLeft(DURATION_SECONDS);
+          setStatus("playing");
           runInterval = window.setInterval(() => {
             setTimeLeft((t) => {
               if (t <= 1) {
                 window.clearInterval(runInterval);
                 setRunning(false);
+                setStatus((s) => (s === "playing" ? "lost" : s));
+                setMessage("⏰ Time’s up! The villagers were not saved.");
                 return 0;
               }
               return t - 1;
@@ -61,24 +277,126 @@ export default function QuestPage() {
       if (prepInterval) window.clearInterval(prepInterval);
       if (runInterval) window.clearInterval(runInterval);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dimension, biome]);
+
+  function answer(idx: number) {
+    if (status !== "playing") return;
+    const q = questions[qIndex];
+    const isCorrect = idx === q.correctIndex;
+
+    if (!isCorrect) {
+      setStatus("lost");
+      setMessage(`❌ Wrong! The correct answer was “${q.options[q.correctIndex]}”.`);
+      setRunning(false);
+      return;
+    }
+
+    setScore((s) => s + 1);
+    const newMap = bumpProgress(dimension, biome, q.word, q.type);
+    setProgress(newMap);
+
+    if (qIndex + 1 >= questions.length) {
+      if (timeLeft > 0) {
+        setStatus("won");
+        setMessage("✅ Perfect! You saved the villagers and earned 1 ⬛ Netherite!");
+        setRunning(false);
+        awardNetherite();
+      } else {
+        setStatus("lost");
+        setMessage("⏰ Time’s up just as you finished!");
+      }
+    } else {
+      setQIndex((i) => i + 1);
+    }
+  }
+
+  const bg = `${BASE}images/overworld/${biome}-quest-bg.png`;
+
+  function RightPanel() {
+    if (status === "won" || status === "lost") {
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", width: "100%", height: "100%" }}>
+          <div style={{ background: status === "won" ? "#2ecc71" : "#e74c3c", color: "#000", padding: 18, borderRadius: 12, boxShadow: "0 6px 0 #000", maxWidth: 580 }}>
+            <div style={{ fontSize: 22, marginBottom: 8 }}>{status === "won" ? "VICTORY!" : "FAILED!"}</div>
+            <div style={{ marginBottom: 10 }}>{message}</div>
+            <div>Score: <b>{score}</b> / {Math.max(questions.length, 10)}</div>
+            <div style={{ marginTop: 16 }}>
+              <Link className="mc-btn" to={`/study/${dimension}/${biome}`}>Back to Study</Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (prepLeft > 0) {
+      return (
+        <div style={{ opacity: 0.9 }}>
+          <h3 style={{ marginTop: 0 }}>Get Ready…</h3>
+          <p>Quest starts in <b>{prepLeft}</b>…</p>
+        </div>
+      );
+    }
+
+    const q = questions[qIndex];
+    if (!q) return <div>Preparing questions…</div>;
+
+    return (
+      <div style={{ width: "100%" }}>
+        <div style={{ marginBottom: 10, opacity: 0.9 }}>
+          Question {qIndex + 1} of {Math.max(questions.length, 10)}
+        </div>
+
+        <div style={{ background: "#f4d88a", color: "#000", borderRadius: 12, padding: 16, boxShadow: "0 6px 0 #000", marginBottom: 14 }}>
+          <div style={{ marginBottom: 10 }}>
+            {q.type === "spelling" ? (
+              <>
+                <span>{q.prompt} </span>
+                <button
+                  onClick={() => q.speakable && speak(q.speakable)}
+                  title="Play word"
+                  style={{ marginLeft: 10, border: "none", background: "#ffd166", padding: "8px 10px", borderRadius: 8, cursor: "pointer" }}
+                >
+                  🔊
+                </button>
+              </>
+            ) : (
+              <span>{q.prompt}</span>
+            )}
+          </div>
+
+          <div style={{ display: "grid", gap: 10 }}>
+            {q.options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => answer(i)}
+                className="mc-btn"
+                style={{ textAlign: "center", padding: "10px 12px", background: "#3c8527", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ fontSize: 12, opacity: 0.85 }}>
+          {q.type === "spelling"
+            ? "Listen carefully and choose the correct spelling."
+            : q.type === "synonym"
+            ? "Pick the word with a similar meaning."
+            : "Pick the word with the opposite meaning."}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <main
-      className="hero"
-      style={{ backgroundImage: `url(${bg})`, position: "relative" }}
-    >
+    <main className="hero" style={{ backgroundImage: `url(${bg})`, position: "relative" }}>
       <CreeperBg duration="6s" />
 
-      {/* Top-right nav */}
       <nav className="top-right-nav" style={{ zIndex: 2 }}>
-        <Link className="mc-btn" to={`/study/${dimension}/${biome}`}>
-          Back to Study
-        </Link>
+        <Link className="mc-btn" to={`/study/${dimension}/${biome}`}>Back to Study</Link>
       </nav>
 
-      {/* Layout: 2 columns → left stack (intro + score/timer), right full-height questions */}
       <div
         style={{
           position: "relative",
@@ -86,111 +404,29 @@ export default function QuestPage() {
           display: "grid",
           gridTemplateColumns: "1fr 1.2fr",
           gridTemplateRows: "1fr 1fr",
-          gridTemplateAreas: `
-            "leftTop right"
-            "leftBottom right"
-          `,
-          height: "100%",
+          gridTemplateAreas: `"leftTop right" "leftBottom right"`,
           minHeight: "100svh",
         }}
       >
-        {/* Left Top (Intro) */}
-        <div
-          style={{
-            gridArea: "leftTop",
-            background: "rgba(135,128,128,0.8)",
-            margin: "4px",
-            padding: "1rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-          }}
-        >
-          <p
-            style={{
-              fontFamily: "'Press Start 2P', system-ui, sans-serif",
-              fontSize: "clamp(12px, 2vw, 18px)",
-              lineHeight: 1.6,
-              textShadow: "1px 1px 0 #000",
-              color: "#000",
-            }}
-          >
+        <div style={{ gridArea: "leftTop", background: "forestgreen", margin: 4, padding: "1rem", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+          <p style={{ fontFamily: "'Press Start 2P', system-ui, sans-serif", fontSize: "clamp(12px, 2vw, 18px)", lineHeight: 1.6, textShadow: "1px 1px 0 #000", color: "#000" }}>
             THE VILLAGE IS UNDER ATTACK!
-            <br />
-            <br />
+            <br /><br />
             ⚡ A horde of creepers is closing in on the village!
-            <br />
-            <br />
-            🛡️ Only Harvey can save the villagers — answer 10 questions in 30
-            seconds to stop the attack and earn a Netherite reward!
+            <br /><br />
+            🛡️ Answer 10 questions in 3 minutes to save the villagers and earn a Netherite reward!
           </p>
         </div>
 
-        {/* Left Bottom (Score + Timer) */}
-        <div
-          style={{
-            gridArea: "leftBottom",
-            background: "rgba(135,128,128,0.8)",
-            margin: "4px",
-            padding: "1rem",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "1.5rem",
-            fontFamily: "'Press Start 2P', system-ui, sans-serif",
-            color: "#000",
-          }}
-        >
-          {/* Score */}
-          <div
-            style={{
-              fontSize: "clamp(23px, 5vw, 33px)",
-              textShadow: "2px 2px 0 #000",
-            }}
-          >
-            Score: <b>{score}</b>/10
-          </div>
-
-          {/* Timer as a circle */}
-          <div
-            style={{
-              width: "160px",
-              height: "160px",
-              borderRadius: "50%",
-              background: "#3c8527",
-              border: "6px solid #1b1b1b",
-              boxShadow: "0 6px 0 #2c611d, 0 8px 0 #000",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "clamp(24px, 6vw, 40px)",
-              color: "#fff",
-              textShadow: "2px 2px 0 #000",
-            }}
-          >
+        <div style={{ gridArea: "leftBottom", background: "forestgreen", margin: 4, padding: "1rem", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1.5rem", fontFamily: "'Press Start 2P', system-ui, sans-serif", color: "#000" }}>
+          <div style={{ fontSize: "clamp(23px, 5vw, 33px)", textShadow: "2px 2px 0 #000" }}>Score: <b>{score}</b>/10</div>
+          <div style={{ width: 160, height: 160, borderRadius: "50%", background: "#3c8527", border: "6px solid #1b1b1b", boxShadow: "0 6px 0 #2c611d, 0 8px 0 #000", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "clamp(24px, 6vw, 40px)", color: "#fff", textShadow: "2px 2px 0 #000" }}>
             {prepLeft > 0 ? `:${prepLeft}` : `${timeLeft}`}
           </div>
         </div>
 
-        {/* Right (Full-height Questions Panel) */}
-        <div
-          style={{
-            gridArea: "right",
-            background: "rgba(135,128,128,0.8)",
-            margin: "4px",
-            padding: "1rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: "'Press Start 2P', system-ui, sans-serif",
-            fontSize: "clamp(12px, 2vw, 18px)",
-            color: "#000",
-            textAlign: "center",
-          }}
-        >
-          Questions will appear here (Full Right Panel)
+        <div style={{ gridArea: "right", background: "saddlebrown", margin: 4, padding: "1rem", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Press Start 2P', system-ui, sans-serif", fontSize: "clamp(12px, 2vw, 18px)", color: "#000", textAlign: "center" }}>
+          <RightPanel />
         </div>
       </div>
     </main>

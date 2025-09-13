@@ -13,7 +13,7 @@ export default function Index() {
     >
       <div className="center-wrap">
         <div className="stack">
-          <h1 className="h1">Welcome Harvey to your Minecraft VocabVille</h1>
+          <h1 className="h1">Welcome to Minecraft VocabVille</h1>
 
           {/* Active */}
           <McButton to="biome/overworld">Overworld</McButton>
