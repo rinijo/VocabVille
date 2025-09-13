@@ -66,7 +66,10 @@ export default function StudyPage() {
   const [antPick, setAntPick] = React.useState<string | null>(null);
   const [submitted, setSubmitted] = React.useState(false);
 
-  // NEW: toast popup state
+  // NEW: spelling state
+  const [spellValue, setSpellValue] = React.useState("");
+
+  // Toast popup state (auto hides in 3s)
   const [toast, setToast] = React.useState<{ kind: "success" | "error"; msg: string } | null>(null);
   const toastTimerRef = React.useRef<number | null>(null);
   const showToast = (kind: "success" | "error", msg: string) => {
@@ -123,6 +126,7 @@ export default function StudyPage() {
     setSynPick(null);
     setAntPick(null);
     setSubmitted(false);
+    setSpellValue(""); // clear spelling input on new card
   }, [current?.term]);
 
   React.useEffect(() => {
@@ -138,54 +142,79 @@ export default function StudyPage() {
   const masteredCount = words.filter(w => statusNow[w.term]?.mastered).length;
   const craftingCount = countItem(dimension, biome, "crafting_table");
 
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+
+  function speakWord(word: string) {
+    try {
+      if (!("speechSynthesis" in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(word);
+      const voices = window.speechSynthesis.getVoices();
+      const en = voices.find(v => /en(-|_|$)/i.test(v.lang));
+      if (en) u.voice = en;
+      u.rate = 0.95; // a tad slower for clarity
+      window.speechSynthesis.speak(u);
+    } catch {
+      // no-op
+    }
+  }
+
   function pickSyn(opt: string) { setSynPick(opt); }
   function pickAnt(opt: string) { setAntPick(opt); }
 
-function saveAttempt() {
-  if (!current) return;
+  function saveAttempt() {
+    if (!current) return;
 
-  const statusMap = loadAllStatus(dimension, biome);
-  const st: WordStatus = statusMap[current.term] ?? {};
+    const statusMap = loadAllStatus(dimension, biome);
+    const st: WordStatus = statusMap[current.term] ?? {};
 
-  if (flipped) st.totalFlips = (st.totalFlips ?? 0) + 1;
+    if (flipped) st.totalFlips = (st.totalFlips ?? 0) + 1;
 
-  const synCorrect = synPick === current.synonyms.correct;
-  const antCorrect = antPick === current.antonyms.correct;
-  const bothCorrect = synCorrect && antCorrect;
+    const synCorrect = synPick === current.synonyms.correct;
+    const antCorrect = antPick === current.antonyms.correct;
+    const spellCorrect = normalize(spellValue) === normalize(current.term);
 
-  if (bothCorrect) {
-    st.answeredCorrectOnce = true;
-    st.lastResult = "success";
-    st.masteryStreak = (st.masteryStreak ?? 0) + (!flipped ? 1 : 0);
-    if ((st.masteryStreak ?? 0) >= 3) st.mastered = true;
-    if (!flipped) addItem(dimension, biome, "crafting_table", 1);
-    showToast("success", "Correct! ✅");
-  } else {
-    st.lastResult = "fail";
-    st.masteryStreak = 0;
+    const allCorrect = synCorrect && antCorrect && spellCorrect;
 
-    // Build error message
-    let wrongMsg = "Wrong ❌ — ";
-    if (!synCorrect && !antCorrect) {
-      wrongMsg += "both Synonym and Antonym are incorrect.";
-    } else if (!synCorrect) {
-      wrongMsg += "the Synonym is incorrect.";
-    } else if (!antCorrect) {
-      wrongMsg += "the Antonym is incorrect.";
+    if (allCorrect) {
+      st.answeredCorrectOnce = true;
+      st.lastResult = "success";
+      st.masteryStreak = (st.masteryStreak ?? 0) + (!flipped ? 1 : 0);
+      if ((st.masteryStreak ?? 0) >= 3) st.mastered = true;
+      if (!flipped) addItem(dimension, biome, "crafting_table", 1);
+      showToast("success", "Correct! ✅");
+    } else {
+      st.lastResult = "fail";
+      st.masteryStreak = 0;
+
+      // Build detailed error message (which parts are wrong)
+      const wrongParts: string[] = [];
+      if (!synCorrect) wrongParts.push("Synonym");
+      if (!antCorrect) wrongParts.push("Antonym");
+      if (!spellCorrect) wrongParts.push("Spelling");
+
+      let wrongMsg = "Wrong ❌ — ";
+      if (wrongParts.length === 3) wrongMsg += "all three are incorrect.";
+      else if (wrongParts.length === 2) wrongMsg += `${wrongParts[0]} and ${wrongParts[1]} are incorrect.`;
+      else wrongMsg += `${wrongParts[0]} is incorrect.`;
+
+      // If they only missed spelling, reveal the correct word for learning feedback
+      if (!spellCorrect && synCorrect && antCorrect) {
+        wrongMsg += ` The word was: ${current.term.toUpperCase()}`;
+      }
+
+      showToast("error", wrongMsg);
     }
 
-    showToast("error", wrongMsg);
+    statusMap[current.term] = st;
+    saveAllStatus(dimension, biome, statusMap);
+
+    setSubmitted(true);
+
+    // move to next card (keeps flow snappy)
+    setIdx(i => (pool.length ? (i + 1) % pool.length : 0));
   }
-
-  statusMap[current.term] = st;
-  saveAllStatus(dimension, biome, statusMap);
-
-  setSubmitted(true);
-
-  // move to next card (keeps flow snappy)
-  setIdx(i => (pool.length ? (i + 1) % pool.length : 0));
-}
-
 
   // ───────────────────────────────── render
   if (!pathIsValid) {
@@ -295,6 +324,55 @@ function saveAttempt() {
                   })}
                 </div>
               </div>
+            </div>
+
+            {/* 🔊 Hear & Spell (inserted just before Submit) */}
+            <div className="card" style={{ marginTop: ".75rem", padding: ".75rem" }}>
+              <div className="flex-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".5rem" }}>
+                <div className="mcq-title" style={{ margin: 0 }}>Hear &amp; Spell</div>
+                <button
+                  type="button"
+                  className="mc-btn"
+                  onClick={() => speakWord(currentWord.term)}
+                  aria-label="Play the word"
+                  title="Play the word"
+                >
+                  🔊 Play
+                </button>
+              </div>
+
+              {/* Masked underscores that reveal as you type */}
+              <div
+                className="mine-word"
+                style={{ fontFamily: "monospace", letterSpacing: "0.35rem", textAlign: "center", marginTop: ".5rem" }}
+                aria-hidden
+              >
+                {currentWord.term.split("").map((ch, i) => (spellValue[i]?.toUpperCase() ?? "_")).join(" ")}
+              </div>
+
+              {/* Input (letters only, uppercase UI) */}
+              <input
+                inputMode="text"
+                autoCapitalize="none"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={currentWord.term.length}
+                value={spellValue}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^a-zA-Z]/g, "");
+                  setSpellValue(next.slice(0, currentWord.term.length));
+                  if (submitted) setSubmitted(false);
+                }}
+                placeholder={"_".repeat(Math.min(12, currentWord.term.length))}
+                className="input"
+                style={{
+                  width: "100%",
+                  marginTop: ".5rem",
+                  textAlign: "center",
+                  textTransform: "uppercase",
+                }}
+                aria-label="Type the spelling you heard"
+              />
             </div>
 
             <div style={{ display: "grid", gap: ".5rem", marginTop: ".75rem" }}>

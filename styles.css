@@ -322,8 +322,10 @@ img, video, canvas, svg { max-width: 100%; height: auto; }
 
 /* Right panel */
 .study-side { position: relative; }
-.side-card { position: sticky; top: 1rem; }
+.study-side { position: sticky; top: 1rem; align-self: start; }
+.side-card { position: static; }            /* was: position: sticky; */
 .side-card + .side-card { margin-top: 1rem; }
+
 
 /* Back button visibility on mobile */
 .study-back-mobile { display: none; margin-top: 1rem; }
@@ -452,4 +454,41 @@ img, video, canvas, svg { max-width: 100%; height: auto; }
   box-shadow: 0 6px 0 #FFAA00, 0 8px 0 #000;
   border-color: var(--mc-border);
   filter: none;                      /* cancel hover brighten so it's stable */
+}
+/* 1) Zero any default body margin and use border-box everywhere */
+html { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+body { margin: 0; }
+
+/* 2) Make all main wrappers symmetrical on mobile */
+.hero > .center-wrap,
+.center-wrap,
+.stack,
+.study-grid {
+  margin-inline: auto;                                 /* center the block */
+  padding-inline: clamp(12px, 4vw, 24px);              /* equal L/R padding */
+}
+
+/* If you use a single column of buttons (“button stack”), ensure it centers */
+.button-stack, .stack .card, .stack .mc-btn, .home-actions {
+  margin-inline: auto;                                  /* no stray left margin */
+}
+
+/* 3) Kill any accidental left-only padding at small widths */
+@media (max-width: 480px) {
+  .center-wrap,
+  .stack,
+  .home-hero,
+  .home-actions {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right)); /* match left */
+  }
+}
+
+/* 4) If any element was “fake centered” with translate(-50%), fix it */
+.center-abs,
+.toast-abs,
+.banner-abs {
+  left: 50%;
+  transform: translateX(-50%);        /* ensure true horizontal centering */
 }
