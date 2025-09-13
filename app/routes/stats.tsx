@@ -7,24 +7,9 @@ const NETHERITE_PER_30MIN = 10;
 
 type Item = "pickaxe" | "diamond" | "netherite";
 
-type ItemCounts = {
-  pickaxe: number;
-  diamond: number;
-  netherite: number;
-  // NOTE: playMinutes removed from "current" per your instruction
-};
-
-type LifetimeCounts = {
-  pickaxe: number;
-  diamond: number;
-  netherite: number;
-  playMinutes: number; // now tracked only in Lifetime
-};
-
-type State = {
-  lifetime: LifetimeCounts;
-  current: ItemCounts;
-};
+type ItemCounts = { pickaxe: number; diamond: number; netherite: number };
+type LifetimeCounts = { pickaxe: number; diamond: number; netherite: number; playMinutes: number };
+type State = { lifetime: LifetimeCounts; current: ItemCounts };
 
 type Action =
   | { type: "LOAD"; payload: State }
@@ -44,31 +29,45 @@ function clone<T>(x: T): T {
   return JSON.parse(JSON.stringify(x));
 }
 
+/** Normalize legacy shapes into the canonical nested state. */
+function normalizeState(raw: any): State {
+  // Already nested?
+  if (raw && typeof raw === "object" && raw.lifetime && raw.current) {
+    return {
+      lifetime: { ...initialState.lifetime, ...raw.lifetime },
+      current:  { ...initialState.current,  ...raw.current  },
+    };
+  }
+  // Legacy flat { pickaxe, diamond, netherite }
+  if (
+    raw && typeof raw === "object" &&
+    typeof raw.pickaxe === "number" &&
+    typeof raw.diamond === "number" &&
+    typeof raw.netherite === "number"
+  ) {
+    return {
+      lifetime: { ...initialState.lifetime }, // start lifetime at 0
+      current:  {
+        pickaxe: raw.pickaxe | 0,
+        diamond: raw.diamond | 0,
+        netherite: raw.netherite | 0,
+      },
+    };
+  }
+  return clone(initialState);
+}
+
 function reducer(state: State, action: Action): State {
   const next = clone(state);
 
   switch (action.type) {
-    case "LOAD": {
-      // Minimal migration: if older data had current.playMinutes, move it into lifetime.playMinutes.
-      const loaded = clone(action.payload);
-      if (loaded && loaded.lifetime && typeof loaded.lifetime.playMinutes !== "number") {
-        loaded.lifetime.playMinutes = 0;
-      }
-      // @ts-ignore - tolerate old schema
-      const oldCurrentPM = loaded?.current?.playMinutes;
-      if (typeof oldCurrentPM === "number" && oldCurrentPM > 0) {
-        loaded.lifetime.playMinutes += oldCurrentPM;
-        // @ts-ignore - delete old field if present
-        delete loaded.current.playMinutes;
-      }
-      return loaded;
-    }
+    case "LOAD":
+      return clone(action.payload);
 
-    case "ADD_EARNED": {
+    case "ADD_EARNED":
       next.lifetime[action.item] += action.amount;
       (next.current as any)[action.item] += action.amount;
       return next;
-    }
 
     case "SWAP_PICKAXE_TO_DIAMOND": {
       const canMake = Math.floor(next.current.pickaxe / PICKAXES_PER_DIAMOND);
@@ -89,10 +88,10 @@ function reducer(state: State, action: Action): State {
     }
 
     case "REDEEM_NETHERITE_TO_PLAY": {
-      const redeemBlocks = Math.floor(next.current.netherite / NETHERITE_PER_30MIN);
-      if (redeemBlocks > 0) {
-        next.current.netherite -= redeemBlocks * NETHERITE_PER_30MIN;
-        next.lifetime.playMinutes += redeemBlocks * 30; // add to Lifetime only
+      const blocks = Math.floor(next.current.netherite / NETHERITE_PER_30MIN);
+      if (blocks > 0) {
+        next.current.netherite -= blocks * NETHERITE_PER_30MIN;
+        next.lifetime.playMinutes += blocks * 30;
       }
       return next;
     }
@@ -102,21 +101,39 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+/** Persistent state: LAZY INIT from localStorage (fixes the reset), then persist. */
 function usePersistentState() {
-  const [state, dispatch] = React.useReducer(reducer, initialState);
-
-  React.useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
+  const [state, dispatch] = React.useReducer(
+    reducer,
+    initialState,
+    () => {
       try {
-        dispatch({ type: "LOAD", payload: JSON.parse(raw) });
-      } catch {}
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return initialState;
+        return normalizeState(JSON.parse(raw));
+      } catch {
+        return initialState;
+      }
     }
-  }, []);
+  );
 
+  // Persist after any change
   React.useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  // Live-update if another page (quest) writes an award
+  React.useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key !== STORAGE_KEY || e.storageArea !== localStorage) return;
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        dispatch({ type: "LOAD", payload: normalizeState(parsed) });
+      } catch {}
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   return { state, dispatch };
 }
@@ -130,96 +147,32 @@ function minutesToHHMM(mins: number) {
 export default function StatsPage() {
   const { state, dispatch } = usePersistentState();
 
-  const canPXtoOB = Math.floor(state.current.pickaxe / PICKAXES_PER_DIAMOND);
-  const canOBtoNE = Math.floor(state.current.diamond / DIAMOND_PER_NETHERITE);
+  const canPXtoOB   = Math.floor(state.current.pickaxe / PICKAXES_PER_DIAMOND);
+  const canOBtoNE   = Math.floor(state.current.diamond / DIAMOND_PER_NETHERITE);
   const canNEtoTime = Math.floor(state.current.netherite / NETHERITE_PER_30MIN);
 
   return (
     <>
       <style>{`
-        .stats-wrap {
-          min-height: 100dvh;
-          padding: 20px;
-          background-color: saddlebrown; 
-          background-size: cover;
-          background-position: center;
-          background-attachment: fixed;
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-
-        .topbar {
-          display: flex;
-          justify-content: flex-end; /* top-right button */
-        }
-
-        .header {
-          align-items: center;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-
-        .card {
-          padding: 20px;
-          border-radius: 12px;
-          background: forestgreen; 
-          color: white;
-        }
-
-        .section-title {
-          margin: 0 0 12px;
-          font-size: 20px;
-        }
-
-        .table-wrap {
-          width: 100%;
-          overflow-x: auto;
-        }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 420px;
-        }
-
-        th, td {
-          padding: 10px 12px;
-          border-bottom: 1px solid rgba(255,255,255,0.3);
-          text-align: left;
-        }
-
-        .row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-        }
-
-        .btn {
-          padding: 10px 14px;
-          border-radius: 8px;
-          border: none;
-          background: forestgreen; /* keep your original button colour */
-          color: white;
-          font-size: 14px;
-          cursor: pointer;
-        }
-        .btn[disabled] {
-          opacity: .5;
-          cursor: not-allowed;
-        }
+        .stats-wrap { min-height: 100dvh; padding: 20px; background-color: saddlebrown; display: flex; flex-direction: column; gap: 24px; }
+        .card { padding: 20px; border-radius: 12px; background: forestgreen; color: white; }
+        .section-title { margin: 0 0 12px; font-size: 20px; }
+        .table-wrap { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 420px; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.3); text-align: left; }
+        .row { display: flex; flex-wrap: wrap; gap: 12px; }
+        .btn { padding: 10px 14px; border-radius: 8px; border: none; background: forestgreen; color: white; font-size: 14px; cursor: pointer; }
+        .btn[disabled] { opacity: .5; cursor: not-allowed; }
       `}</style>
 
       <main className="stats-wrap">
-      <nav className="top-right-nav">
-        <Link className="mc-btn" to="/">Back to Home</Link>
-      </nav>
+        <nav className="top-right-nav">
+          <Link className="mc-btn" to="/">Back to Home</Link>
+        </nav>
 
         <header className="header">
           <h1 style={{ margin: 0, marginBottom: 20 }}>Stats & Swaps</h1>
-          <span style={{ fontSize: 14 }}>
-            5 ⛏️ = 1 💎 | 5 💎 = 1 ⬛ | 10 ⬛ = 30 min 🎮
-          </span>
+          <span style={{ fontSize: 14 }}>5 ⛏️ = 1 💎 | 5 💎 = 1 ⬛ | 10 ⬛ = 30 min 🎮</span>
         </header>
 
         {/* Inventory */}
@@ -228,66 +181,32 @@ export default function StatsPage() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Lifetime</th>
-                  <th>Current</th>
-                </tr>
+                <tr><th>Item</th><th>Lifetime</th><th>Current</th></tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>⛏️ Pickaxe</td>
-                  <td>{state.lifetime.pickaxe}</td>
-                  <td>{state.current.pickaxe}</td>
-                </tr>
-                <tr>
-                  <td>💎 Diamond</td>
-                  <td>{state.lifetime.diamond}</td>
-                  <td>{state.current.diamond}</td>
-                </tr>
-                <tr>
-                  <td>⬛ Netherite</td>
-                  <td>{state.lifetime.netherite}</td>
-                  <td>{state.current.netherite}</td>
-                </tr>
+                <tr><td>⛏️ Pickaxe</td><td>{state.lifetime.pickaxe}</td><td>{state.current.pickaxe}</td></tr>
+                <tr><td>💎 Diamond</td><td>{state.lifetime.diamond}</td><td>{state.current.diamond}</td></tr>
+                <tr><td>⬛ Netherite</td><td>{state.lifetime.netherite}</td><td>{state.current.netherite}</td></tr>
                 <tr>
                   <td>🎮 Minecraft Earned</td>
-                  <td>
-                    {state.lifetime.playMinutes}{" "}
-                    <span style={{ opacity: 0.8 }}>
-                      ({minutesToHHMM(state.lifetime.playMinutes)})
-                    </span>
-                  </td>
+                  <td>{state.lifetime.playMinutes} <span style={{ opacity: 0.8 }}>({minutesToHHMM(state.lifetime.playMinutes)})</span></td>
                   <td>—</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </section>
+
         {/* Conversion */}
-        <h2 className="section-title" style={{ color: "white" }}>
-          Convert & Redeem
-        </h2>
+        <h2 className="section-title" style={{ color: "white" }}>Convert & Redeem</h2>
         <div className="row">
-          <button
-            className="btn"
-            disabled={!canPXtoOB}
-            onClick={() => dispatch({ type: "SWAP_PICKAXE_TO_DIAMOND" })}
-          >
+          <button className="btn" disabled={!canPXtoOB} onClick={() => dispatch({ type: "SWAP_PICKAXE_TO_DIAMOND" })}>
             5 ⛏️ ➜ 1 💎 {canPXtoOB > 0 ? `(${canPXtoOB})` : ""}
           </button>
-          <button
-            className="btn"
-            disabled={!canOBtoNE}
-            onClick={() => dispatch({ type: "SWAP_DIAMOND_TO_NETHERITE" })}
-          >
+          <button className="btn" disabled={!canOBtoNE} onClick={() => dispatch({ type: "SWAP_DIAMOND_TO_NETHERITE" })}>
             5 💎 ➜ 1 ⬛ {canOBtoNE > 0 ? `(${canOBtoNE})` : ""}
           </button>
-          <button
-            className="btn"
-            disabled={!canNEtoTime}
-            onClick={() => dispatch({ type: "REDEEM_NETHERITE_TO_PLAY" })}
-          >
+          <button className="btn" disabled={!canNEtoTime} onClick={() => dispatch({ type: "REDEEM_NETHERITE_TO_PLAY" })}>
             10 ⬛ ➜ 🎮 30m {canNEtoTime > 0 ? `(${canNEtoTime}×)` : ""}
           </button>
         </div>

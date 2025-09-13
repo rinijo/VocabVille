@@ -6,7 +6,7 @@ const BASE = import.meta.env.BASE_URL;
 
 type QAType = "spelling" | "synonym" | "antonym";
 
-/** JSON shape in public/words/<dimension>/<biome>.json */
+/** JSON in public/words/<dimension>/<biome>.json */
 type JsonWord = {
   term: string;
   definition?: string;
@@ -32,7 +32,7 @@ type Question = {
 };
 
 // Storage keys
-const statsKey = "vv_stats_v2";
+const STATS_KEY = "vv_stats_v2";
 const progressKey = (dim: string, biome: string) => `vv_progress_${dim}_${biome}`;
 
 // Utils
@@ -50,6 +50,7 @@ function misspellingsOf(word: string): string[] {
   const outs = new Set<string>();
   const lower = word.toLowerCase();
   const vowels = new Set(["a", "e", "i", "o", "u"]);
+
   // swap neighbors
   for (let i = 0; i < lower.length - 1; i++) {
     outs.add(lower.slice(0, i) + lower[i + 1] + lower[i] + lower.slice(i + 2));
@@ -100,18 +101,51 @@ function bumpProgress(dim: string, biome: string, word: string, type: QAType): P
   return map;
 }
 
-// Award netherite on win
+// Award netherite on win (robust init + legacy flat migration)
 function awardNetherite() {
+  const defaults = {
+    lifetime: { pickaxe: 0, diamond: 0, netherite: 0, playMinutes: 0 },
+    current:  { pickaxe: 0, diamond: 0, netherite: 0 },
+  };
+
+  let state = { ...defaults };
   try {
-    const raw = localStorage.getItem(statsKey);
-    if (!raw) return;
-    const state = JSON.parse(raw);
-    state.lifetime ||= { pickaxe: 0, diamond: 0, netherite: 0, playMinutes: 0 };
-    state.current ||= { pickaxe: 0, diamond: 0, netherite: 0 };
-    state.lifetime.netherite = (state.lifetime.netherite || 0) + 1;
-    state.current.netherite = (state.current.netherite || 0) + 1;
-    localStorage.setItem(statsKey, JSON.stringify(state));
-  } catch {}
+    const raw = localStorage.getItem(STATS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // legacy flat {pickaxe, diamond, netherite}
+      if (
+        parsed && typeof parsed === "object" &&
+        !parsed.lifetime && !parsed.current &&
+        typeof parsed.pickaxe === "number" &&
+        typeof parsed.diamond === "number" &&
+        typeof parsed.netherite === "number"
+      ) {
+        state = {
+          lifetime: { ...defaults.lifetime },
+          current: {
+            pickaxe: parsed.pickaxe | 0,
+            diamond: parsed.diamond | 0,
+            netherite: parsed.netherite | 0,
+          },
+        };
+      } else {
+        state = {
+          lifetime: { ...defaults.lifetime, ...(parsed?.lifetime || {}) },
+          current:  { ...defaults.current,  ...(parsed?.current  || {}) },
+        };
+      }
+    }
+  } catch {
+    // ignore parse errors, keep defaults
+  }
+
+  state.lifetime.netherite = (state.lifetime.netherite || 0) + 1;
+  state.current.netherite  = (state.current.netherite  || 0) + 1;
+
+  console.log("[award] +1 netherite", state);
+  localStorage.setItem(STATS_KEY, JSON.stringify(state));
+  try { window.dispatchEvent(new StorageEvent("storage", { key: STATS_KEY })); } catch {}
 }
 
 // Build questions from JSON record
@@ -177,16 +211,13 @@ export default function QuestPage() {
   const [score, setScore] = React.useState(0);
 
   const [words, setWords] = React.useState<JsonWord[]>([]);
-  const [progress, setProgress] = React.useState<ProgressMap>({});
   const [questions, setQuestions] = React.useState<Question[]>([]);
   const [qIndex, setQIndex] = React.useState(0);
   const [status, setStatus] = React.useState<"idle" | "playing" | "won" | "lost">("idle");
   const [message, setMessage] = React.useState("");
 
-  // Load progress & JSON for this biome
+  // Load JSON for this biome
   React.useEffect(() => {
-    setProgress(loadProgress(dimension, biome));
-
     let aborted = false;
     const url = `${BASE}words/${dimension}/${biome}.json`;
     (async () => {
@@ -206,15 +237,14 @@ export default function QuestPage() {
     return () => { aborted = true; };
   }, [dimension, biome]);
 
-  // ✅ Build 10 Qs ONCE per session, after words load.
-  // IMPORTANT: Do NOT depend on `progress` here, or you’ll reset mid-quest.
+  // Build 10 Qs ONCE per session, after words load (not dependent on progress)
   React.useEffect(() => {
     if (!words.length) {
       setQuestions([]);
       return;
     }
 
-    // Snapshot current progress only to exclude retired words at session start
+    // Take a snapshot of current progress only to exclude retired words at session start
     const progressSnapshot = loadProgress(dimension, biome);
     const retired = new Set<string>(
       Object.entries(progressSnapshot)
@@ -234,8 +264,8 @@ export default function QuestPage() {
     setQuestions(qs);
     setQIndex(0);
     setScore(0);
-    // Do NOT touch status here; timer effect handles it.
     setMessage("");
+    // status stays "idle"; timer effect below flips it to "playing"
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words, dimension, biome]);
 
@@ -292,15 +322,15 @@ export default function QuestPage() {
     }
 
     setScore((s) => s + 1);
-    const newMap = bumpProgress(dimension, biome, q.word, q.type);
-    setProgress(newMap);
+    // (We update retirement counters quietly; not used to rebuild this session.)
+    bumpProgress(dimension, biome, q.word, q.type);
 
     if (qIndex + 1 >= questions.length) {
       if (timeLeft > 0) {
         setStatus("won");
         setMessage("✅ Perfect! You saved the villagers and earned 1 ⬛ Netherite!");
         setRunning(false);
-        awardNetherite();
+        awardNetherite(); // <-- writes nested vv_stats_v2 and logs to console
       } else {
         setStatus("lost");
         setMessage("⏰ Time’s up just as you finished!");
@@ -414,7 +444,7 @@ export default function QuestPage() {
             <br /><br />
             ⚡ A horde of creepers is closing in on the village!
             <br /><br />
-            🛡️ Answer 10 questions in 3 minutes to save the villagers and earn a Netherite reward!
+            🛡️ Answer 10 questions in 30 seconds to save the villagers and earn a Netherite reward!
           </p>
         </div>
 
