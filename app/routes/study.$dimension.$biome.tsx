@@ -361,7 +361,7 @@ export default function StudyPage() {
                   if (submitted) setSubmitted(false);
                 }}
                 placeholder={"_".repeat(Math.min(12, currentWord.term.length))}
-                className="input"
+                className="input spelling-input"
                 style={{
                   width: "100%",
                   marginTop: ".5rem",
