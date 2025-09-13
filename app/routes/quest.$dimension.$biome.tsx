@@ -76,9 +76,6 @@ export default function QuestPage() {
         <Link className="mc-btn" to={`/study/${dimension}/${biome}`}>
           Back to Study
         </Link>
-        <Link className="mc-btn" to={`/biome/${dimension}`}>
-          Overworld
-        </Link>
       </nav>
 
       {/* Layout: 2 columns → left stack (intro + score/timer), right full-height questions */}

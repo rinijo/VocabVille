@@ -49,8 +49,8 @@ export default function Index() {
             onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(3px)")}
             onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(0)")}
           >
-            <span style={{ fontSize: "20px" }}>📊</span>
-            <span>View Your Stats</span>
+            <span style={{ fontSize: "35px" }}>📦</span>
+            <span>Inventory Chest</span>
           </Link>
         </div>
       </div>

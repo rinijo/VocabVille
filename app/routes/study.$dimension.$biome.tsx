@@ -385,16 +385,6 @@ export default function StudyPage() {
 
           <aside className="study-side">
             <div className="side-card card">
-              <h3 style={{ marginTop: 0 }}>Inventory Chest💎</h3>
-              <p style={{ marginTop: ".25rem" }}>
-                Crafting Tables: <b>{craftingCount}</b>
-              </p>
-              <div style={{ marginTop: ".5rem", fontSize: 12, opacity: .9 }}>
-                Items are per-biome. Progress auto-saves.
-              </div>
-            </div>
-
-            <div className="side-card card">
               <h3 style={{ marginTop: 0 }}>🧑‍🌾 Save the villagers</h3>
               <p style={{ margin: ".25rem 0" }}>There is a creeper attack!</p>
               <Link className="mc-btn" to={`/quest/${dimension}/${biome}`}>
