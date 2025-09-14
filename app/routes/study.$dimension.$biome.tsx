@@ -1,6 +1,8 @@
 // app/routes/study.$dimension.$biome.tsx
 import * as React from "react";
 import { Link, useParams } from "react-router-dom";
+
+// Adjust these paths if your folders differ
 import { OVERWORLD_CATEGORIES } from "../data/overworld";
 import { addItem, countItem } from "../utils/inventory";
 
@@ -20,10 +22,13 @@ type WordStatus = {
 };
 
 const STATUS_KEY = "vocabville:study:status";
-const BASE = import.meta.env.BASE_URL;
+const BASE = import.meta.env.BASE_URL ?? "/";
 
-const titleCase = (s: string) => s.replace(/-/g, " ").replace(/\b\w/g, m => m.toUpperCase());
+const titleCase = (s: string) =>
+  s.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+
 const statusScope = (d: string, b: string) => `${STATUS_KEY}:${d}:${b}`;
+
 const loadAllStatus = (d: string, b: string): Record<string, WordStatus> => {
   try {
     const raw = localStorage.getItem(statusScope(d, b));
@@ -32,26 +37,57 @@ const loadAllStatus = (d: string, b: string): Record<string, WordStatus> => {
     return {};
   }
 };
+
 const saveAllStatus = (d: string, b: string, map: Record<string, WordStatus>) => {
-  localStorage.setItem(statusScope(d, b), JSON.stringify(map));
+  try {
+    localStorage.setItem(statusScope(d, b), JSON.stringify(map));
+  } catch {
+    // ignore
+  }
 };
 
+/**
+ * Defensive seeding:
+ * Ensure the very first biome (overworld/plains) appears "present" so any
+ * unlock checks based on "does a status key exist?" pass on first run.
+ */
+function ensureFirstBiomeUnlocked() {
+  try {
+    const key = statusScope("overworld", "plains");
+    if (!localStorage.getItem(key)) {
+      // Minimal, idempotent value; UI usually checks for existence/truthy JSON
+      localStorage.setItem(key, JSON.stringify({ unlocked: true, __seeded: true }));
+    }
+  } catch {
+    // ignore storage errors (e.g., private mode)
+  }
+}
+
 export default function StudyPage() {
+  // Ensure Plains is seeded even if a user lands here first
+  ensureFirstBiomeUnlocked();
+
   // ───────────────────────────────── params/state
   const { dimension = "", biome = "" } = useParams();
-  const dim = dimension.toLowerCase();
-  const pathIsValid = dim === "overworld" && !!biome;
+  const dim = (dimension || "").toLowerCase();
+
+  const validDimension = dim === "overworld";
+  const pathIsValid = validDimension && !!biome;
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [words, setWords] = React.useState<WordCard[]>([]);
-  const [name, setName] = React.useState(titleCase(biome));
+  const [name, setName] = React.useState(titleCase(biome || ""));
   const [blurb, setBlurb] = React.useState("");
 
-  const statusInitial = React.useMemo(() => loadAllStatus(dimension, biome), [dimension, biome]);
+  // Status snapshot used for initial filtering; we also re-read on demand
+  const statusInitial = React.useMemo(
+    () => loadAllStatus(dimension, biome),
+    [dimension, biome]
+  );
 
   const active = React.useMemo(
-    () => words.filter(w => !statusInitial[w.term]?.mastered),
+    () => words.filter((w) => !statusInitial[w.term]?.mastered),
     [words, statusInitial]
   );
   const pool = active.length ? active : words;
@@ -61,12 +97,12 @@ export default function StudyPage() {
 
   const [flipped, setFlipped] = React.useState(false);
 
-  // MCQ picks (changeable)
+  // MCQ picks (changeable, final evaluation on submit)
   const [synPick, setSynPick] = React.useState<string | null>(null);
   const [antPick, setAntPick] = React.useState<string | null>(null);
   const [submitted, setSubmitted] = React.useState(false);
 
-  // NEW: spelling state
+  // 🔤 spelling
   const [spellValue, setSpellValue] = React.useState("");
 
   // Toast popup state (auto hides in 3s)
@@ -78,16 +114,19 @@ export default function StudyPage() {
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3000);
   };
 
+  // Set biome name & blurb
   React.useEffect(() => {
-    const allBiomes = OVERWORLD_CATEGORIES.flatMap(c => c.biomes);
-    const match = allBiomes.find(b => b.slug === biome);
-    setName(match?.name ?? titleCase(biome));
+    const allBiomes = OVERWORLD_CATEGORIES.flatMap((c) => c.biomes);
+    const match = allBiomes.find((b) => b.slug === biome);
+    setName(match?.name ?? titleCase(biome || ""));
     setBlurb(
-      ({ plains: "Flat grasslands with villages and friendly mobs." } as Record<string, string>)[biome] ??
-      `Explore the ${match?.name ?? titleCase(biome)} biome.`
+      ({ plains: "Flat grasslands with villages and friendly mobs." } as Record<string, string>)[
+        biome || ""
+      ] ?? `Explore the ${match?.name ?? titleCase(biome || "")} biome.`
     );
   }, [biome]);
 
+  // Load words JSON
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -98,7 +137,9 @@ export default function StudyPage() {
         const res = await fetch(`${BASE}words/overworld/${biome}.json`, { cache: "no-store" });
         if (!res.ok) throw new Error("Words not found for this biome.");
         const raw: WordCard[] = await res.json();
-        const normalized: WordCard[] = raw.map(w => ({
+
+        // Normalize to ensure options arrays exist and are capped to 4
+        const normalized: WordCard[] = raw.map((w) => ({
           term: w.term,
           definition: w.definition ?? "",
           synonyms: {
@@ -110,6 +151,7 @@ export default function StudyPage() {
             options: Array.isArray(w.antonyms?.options) ? w.antonyms.options.slice(0, 4) : [],
           },
         }));
+
         if (!cancelled) setWords(normalized);
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load words.");
@@ -117,29 +159,35 @@ export default function StudyPage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
-  }, [BASE, biome, pathIsValid]);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [biome, pathIsValid]);
 
+  // Reset per-card UI when the current word changes
   React.useEffect(() => {
-    // reset per-card UI when the current word changes
     setFlipped(false);
     setSynPick(null);
     setAntPick(null);
     setSubmitted(false);
-    setSpellValue(""); // clear spelling input on new card
+    setSpellValue("");
   }, [current?.term]);
 
+  // Cleanup toast timer
   React.useEffect(() => {
     return () => {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     };
   }, []);
 
-  // ───────────────────────────────── helpers (no hooks below)
+  // ───────────────────────────────── helpers
   const bg = `${BASE}images/overworld/${biome}.jpg`;
+
+  // Read a fresh snapshot when we need counts
   const statusNow = loadAllStatus(dimension, biome);
-  const completedOnceCount = words.filter(w => statusNow[w.term]?.answeredCorrectOnce).length;
-  const masteredCount = words.filter(w => statusNow[w.term]?.mastered).length;
+  const completedOnceCount = words.filter((w) => statusNow[w.term]?.answeredCorrectOnce).length;
+  const masteredCount = words.filter((w) => statusNow[w.term]?.mastered).length;
   const craftingCount = countItem(dimension, biome, "crafting_table");
 
   const normalize = (s: string) =>
@@ -151,17 +199,14 @@ export default function StudyPage() {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(word);
       const voices = window.speechSynthesis.getVoices();
-      const en = voices.find(v => /en(-|_|$)/i.test(v.lang));
+      const en = voices.find((v) => /en(-|_|$)/i.test(v.lang));
       if (en) u.voice = en;
-      u.rate = 0.95; // a tad slower for clarity
+      u.rate = 0.95;
       window.speechSynthesis.speak(u);
     } catch {
-      // no-op
+      // ignore
     }
   }
-
-  function pickSyn(opt: string) { setSynPick(opt); }
-  function pickAnt(opt: string) { setAntPick(opt); }
 
   function saveAttempt() {
     if (!current) return;
@@ -182,29 +227,31 @@ export default function StudyPage() {
       st.lastResult = "success";
       st.masteryStreak = (st.masteryStreak ?? 0) + (!flipped ? 1 : 0);
       if ((st.masteryStreak ?? 0) >= 3) st.mastered = true;
+
+      // Award a crafting table on perfect first-try (or when not flipped)
       if (!flipped) addItem(dimension, biome, "crafting_table", 1);
+
       showToast("success", "Correct! ✅");
     } else {
       st.lastResult = "fail";
       st.masteryStreak = 0;
 
-      // Build detailed error message (which parts are wrong)
-      const wrongParts: string[] = [];
-      if (!synCorrect) wrongParts.push("Synonym");
-      if (!antCorrect) wrongParts.push("Antonym");
-      if (!spellCorrect) wrongParts.push("Spelling");
+      // Build a detailed error message
+      const wrong: string[] = [];
+      if (!synCorrect) wrong.push("Synonym");
+      if (!antCorrect) wrong.push("Antonym");
+      if (!spellCorrect) wrong.push("Spelling");
 
-      let wrongMsg = "Wrong ❌ — ";
-      if (wrongParts.length === 3) wrongMsg += "all three are incorrect.";
-      else if (wrongParts.length === 2) wrongMsg += `${wrongParts[0]} and ${wrongParts[1]} are incorrect.`;
-      else wrongMsg += `${wrongParts[0]} is incorrect.`;
+      let msg = "Wrong ❌ — ";
+      if (wrong.length === 3) msg += "all three are incorrect.";
+      else if (wrong.length === 2) msg += `${wrong[0]} and ${wrong[1]} are incorrect.`;
+      else msg += `${wrong[0]} is incorrect.`;
 
-      // If they only missed spelling, reveal the correct word for learning feedback
       if (!spellCorrect && synCorrect && antCorrect) {
-        wrongMsg += ` The word was: ${current.term.toUpperCase()}`;
+        msg += ` The word was: ${current.term.toUpperCase()}`;
       }
 
-      showToast("error", wrongMsg);
+      showToast("error", msg);
     }
 
     statusMap[current.term] = st;
@@ -212,8 +259,8 @@ export default function StudyPage() {
 
     setSubmitted(true);
 
-    // move to next card (keeps flow snappy)
-    setIdx(i => (pool.length ? (i + 1) % pool.length : 0));
+    // Move to next item to keep the flow
+    setIdx((i) => (pool.length ? (i + 1) % pool.length : 0));
   }
 
   // ───────────────────────────────── render
@@ -231,7 +278,9 @@ export default function StudyPage() {
   if (loading) {
     return (
       <main className="center-wrap">
-        <div className="stack"><div className="card">Loading words…</div></div>
+        <div className="stack">
+          <div className="card">Loading words…</div>
+        </div>
       </main>
     );
   }
@@ -264,10 +313,27 @@ export default function StudyPage() {
                 <div className="badge badge--overworld">{name}</div>
                 <h2 style={{ margin: ".25rem 0 .5rem" }}>{blurb}</h2>
               </div>
+
               <div className="study-nav">
-                <button className="mc-btn" onClick={() => setIdx(i => (i > 0 ? i - 1 : pool.length - 1))}>◀ Prev</button>
-                <div className="study-step">{(pool.indexOf(currentWord) + 1)} / {pool.length}</div>
-                <button className="mc-btn" onClick={() => setIdx(i => (i < pool.length - 1 ? i + 1 : 0))}>Next ▶</button>
+                <button
+                  className="mc-btn"
+                  onClick={() =>
+                    setIdx((i) => (i > 0 ? i - 1 : pool.length - 1))
+                  }
+                >
+                  ◀ Prev
+                </button>
+                <div className="study-step">
+                  {pool.indexOf(currentWord) + 1} / {pool.length}
+                </div>
+                <button
+                  className="mc-btn"
+                  onClick={() =>
+                    setIdx((i) => (i < pool.length - 1 ? i + 1 : 0))
+                  }
+                >
+                  Next ▶
+                </button>
               </div>
             </header>
 
@@ -275,10 +341,17 @@ export default function StudyPage() {
               <h3 className="mine-title">⛏️ Mine the word</h3>
               <div className="mine-word">{currentWord.term}</div>
 
-              <div className={`flip ${flipped ? "is-flipped" : ""}`} onClick={() => setFlipped(f => !f)}>
+              <div
+                className={`flip ${flipped ? "is-flipped" : ""}`}
+                onClick={() => setFlipped((f) => !f)}
+              >
                 <div className="flip-inner">
-                  <div className="flip-face flip-front"><span>Tap to reveal definition</span></div>
-                  <div className="flip-face flip-back"><span>{currentWord.definition || "Definition not set yet."}</span></div>
+                  <div className="flip-face flip-front">
+                    <span>Tap to reveal definition</span>
+                  </div>
+                  <div className="flip-face flip-back">
+                    <span>{currentWord.definition || "Definition not set yet."}</span>
+                  </div>
                 </div>
               </div>
 
@@ -286,9 +359,11 @@ export default function StudyPage() {
               <div className="mcq">
                 <div className="mcq-title">Synonym</div>
                 <div className="mcq-grid">
-                  {currentWord.synonyms.options.map(opt => {
+                  {currentWord.synonyms.options.map((opt) => {
                     const chosen = synPick === opt;
-                    const cls = ["mcq-option", chosen && "selected"].filter(Boolean).join(" ");
+                    const cls = ["mcq-option", chosen && "selected"]
+                      .filter(Boolean)
+                      .join(" ");
                     return (
                       <button
                         key={opt}
@@ -306,9 +381,11 @@ export default function StudyPage() {
               <div className="mcq">
                 <div className="mcq-title">Antonym</div>
                 <div className="mcq-grid">
-                  {currentWord.antonyms.options.map(opt => {
+                  {currentWord.antonyms.options.map((opt) => {
                     const chosen = antPick === opt;
-                    const cls = ["mcq-option", chosen && "selected"].filter(Boolean).join(" ");
+                    const cls = ["mcq-option", chosen && "selected"]
+                      .filter(Boolean)
+                      .join(" ");
                     return (
                       <button
                         key={opt}
@@ -323,10 +400,19 @@ export default function StudyPage() {
               </div>
             </div>
 
-            {/* 🔊 Hear & Spell (inserted just before Submit) */}
+            {/* 🔊 Hear & Spell */}
             <div className="card" style={{ marginTop: ".75rem", padding: ".75rem" }}>
-              <div className="flex-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: ".5rem" }}>
-                <div className="mcq-title" style={{ margin: 0 }}>Hear &amp; Spell</div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: ".5rem",
+                }}
+              >
+                <div className="mcq-title" style={{ margin: 0 }}>
+                  Hear &amp; Spell
+                </div>
                 <button
                   type="button"
                   className="mc-btn"
@@ -338,16 +424,25 @@ export default function StudyPage() {
                 </button>
               </div>
 
-              {/* Masked underscores that reveal as you type */}
+              {/* Underscore mask that fills as you type */}
               <div
                 className="mine-word"
-                style={{ fontFamily: "monospace", letterSpacing: "0.35rem", textAlign: "center", marginTop: ".5rem" }}
+                style={{
+                  fontFamily: "monospace",
+                  letterSpacing: "0.35rem",
+                  textAlign: "center",
+                  marginTop: ".5rem",
+                  userSelect: "none",
+                }}
                 aria-hidden
               >
-                {currentWord.term.split("").map((ch, i) => (spellValue[i]?.toUpperCase() ?? "_")).join(" ")}
+                {currentWord.term
+                  .split("")
+                  .map((_, i) => (spellValue[i]?.toUpperCase() ?? "_"))
+                  .join(" ")}
               </div>
 
-              {/* Input (letters only, uppercase UI) */}
+              {/* Input (letters only) */}
               <input
                 inputMode="text"
                 autoCapitalize="none"
@@ -373,9 +468,12 @@ export default function StudyPage() {
             </div>
 
             <div style={{ display: "grid", gap: ".5rem", marginTop: ".75rem" }}>
-              <button className="mc-btn" onClick={saveAttempt}>Submit</button>
+              <button className="mc-btn" onClick={saveAttempt}>
+                Submit
+              </button>
               <div className="card" style={{ background: "#1b1b1baa" }}>
-                Tip: You can change your answers before submitting. No correctness is shown until submit.
+                Tip: You can change your answers before submitting. No correctness
+                is shown until submit.
               </div>
             </div>
           </section>
@@ -387,6 +485,15 @@ export default function StudyPage() {
               <Link className="mc-btn" to={`/quest/${dimension}/${biome}`}>
                 Save the villagers
               </Link>
+            </div>
+
+            <div className="side-card card">
+              <h3 style={{ marginTop: 0 }}>📊 Progress</h3>
+              <ul style={{ margin: 0, paddingLeft: "1rem" }}>
+                <li>Answered once: {completedOnceCount}</li>
+                <li>Mastered: {masteredCount}</li>
+                <li>Crafting tables: {craftingCount}</li>
+              </ul>
             </div>
           </aside>
         </div>
@@ -409,7 +516,7 @@ export default function StudyPage() {
             fontFamily: "'Press Start 2P', system-ui, sans-serif",
             fontSize: "14px",
             textAlign: "center",
-            maxWidth: "min(90%, 400px)",
+            maxWidth: "min(90%, 420px)",
           }}
           role="status"
           aria-live="assertive"

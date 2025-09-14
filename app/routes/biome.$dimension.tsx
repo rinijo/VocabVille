@@ -1,3 +1,4 @@
+// app/routes/biome.$dimension.tsx
 import * as React from "react";
 import { Link, useParams } from "react-router-dom";
 import BiomeMapOverworld from "../components/BiomeMap";
@@ -29,6 +30,36 @@ const DIMENSIONS: Record<
   },
 };
 
+// --- Helpers to guarantee first-run unlock of OVW/Plains ---
+const UNLOCKS_KEY = "vocabville:biome:unlocks"; // { [dimension]: { [biome]: true } }
+const PLAINS_STATUS_KEY = "vocabville:study:status:overworld:plains"; // per-biome study key
+
+function seedOverworldPlainsUnlocked() {
+  try {
+    // 1) If your map checks a central unlocks object, ensure plains=true
+    const existingUnlocksRaw = localStorage.getItem(UNLOCKS_KEY);
+    const existingUnlocks = existingUnlocksRaw ? JSON.parse(existingUnlocksRaw) : {};
+    const merged = {
+      ...existingUnlocks,
+      overworld: {
+        ...(existingUnlocks?.overworld ?? {}),
+        plains: true, // ✅ default unlocked
+      },
+    };
+    // Only write if changed (avoid thrashing)
+    if (JSON.stringify(merged) !== existingUnlocksRaw) {
+      localStorage.setItem(UNLOCKS_KEY, JSON.stringify(merged));
+    }
+
+    // 2) If your UI checks the per-biome study status key, ensure it exists
+    if (!localStorage.getItem(PLAINS_STATUS_KEY)) {
+      localStorage.setItem(PLAINS_STATUS_KEY, JSON.stringify({ unlocked: true, __seeded: true }));
+    }
+  } catch {
+    // Ignore storage errors (e.g., private mode)
+  }
+}
+
 export default function BiomePage() {
   const { dimension: dimParam = "" } = useParams();
   const dimension = dimParam.toLowerCase() as DimensionKey;
@@ -43,6 +74,12 @@ export default function BiomePage() {
         </div>
       </main>
     );
+  }
+
+  // ✅ Ensure Plains is unlocked BEFORE the map component renders
+  if (dimension === "overworld") {
+    // This runs during parent render, so child <BiomeMapOverworld /> sees the keys immediately.
+    seedOverworldPlainsUnlocked();
   }
 
   return (
