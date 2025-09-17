@@ -83,36 +83,60 @@ function reducer(state: State, action: Action): State {
     case "SWAP_PICKAXE_TO_DIAMOND": {
       const canMake = Math.floor(next.current.pickaxe / PICKAXES_PER_DIAMOND);
       if (canMake > 0) {
+        // 👇 Ensure lifetime baseline is >= current BEFORE spending (fixes Used Pickaxe)
+        next.lifetime.pickaxe = Math.max(
+          Number(next.lifetime.pickaxe || 0),
+          Number(next.current.pickaxe || 0)
+        );
+
         next.current.pickaxe -= canMake * PICKAXES_PER_DIAMOND;
         next.current.diamond += canMake;
+
+        // 👇 Count crafted diamonds so Used(Diamond) can rise when you spend them later
+        next.lifetime.diamond = Number(next.lifetime.diamond || 0) + canMake;
       }
       return next;
     }
 
+
     case "SWAP_DIAMOND_TO_NETHERITE": {
       const canMake = Math.floor(next.current.diamond / DIAMOND_PER_NETHERITE);
       if (canMake > 0) {
-        next.current.diamond -= canMake * DIAMOND_PER_NETHERITE;
+        // 👇 Ensure lifetime baseline is >= current BEFORE spending (fixes Used Diamond)
+        next.lifetime.diamond = Math.max(
+          Number(next.lifetime.diamond || 0),
+          Number(next.current.diamond || 0)
+        );
+
+        next.current.diamond   -= canMake * DIAMOND_PER_NETHERITE;
         next.current.netherite += canMake;
+
+        // 👇 Count crafted netherite so Used(Netherite) can rise when you redeem it later
+        next.lifetime.netherite = Number(next.lifetime.netherite || 0) + canMake;
       }
       return next;
     }
 
     case "REDEEM_NETHERITE_TO_PLAY": {
-      // Convert ALL full blocks of 10 ⬛ into minutes (30m per block)
+      // redeem in blocks of 10 ⬛ → 30 minutes
       const blocks = Math.floor(next.current.netherite / NETHERITE_PER_30MIN);
       if (blocks > 0) {
-        const minutes = blocks * 30;
+        // 👇 Ensure lifetime baseline is >= current BEFORE spending (fixes Used Netherite)
+        next.lifetime.netherite = Math.max(
+          Number(next.lifetime.netherite || 0),
+          Number(next.current.netherite || 0)
+        );
+
         next.current.netherite -= blocks * NETHERITE_PER_30MIN;
 
-        // IMPORTANT CHANGE:
-        // - We only add to LIFETIME minutes (this is "used" total).
-        // - We DO NOT add to current.playMinutes anymore.
-        //   Current minutes are derived from netherite below, so after redeem they'll show 0.
-        next.lifetime.playMinutes += minutes;
+        const minutes = blocks * 30;
+        next.current.playMinutes  = Number(next.current.playMinutes  || 0) + minutes;
+        next.lifetime.playMinutes = Number(next.lifetime.playMinutes || 0) + minutes;
+        // ⚠️ Do NOT increment lifetime.netherite here — only when crafting.
       }
       return next;
     }
+
 
     default:
       return state;
@@ -202,14 +226,11 @@ export default function StatsPage() {
     diamond:   Math.max(0, state.lifetime.diamond   - state.current.diamond),
     netherite: Math.max(0, state.lifetime.netherite - state.current.netherite),
 
-    // IMPORTANT CHANGE:
-    // "Used" time is the *redeemed* total (lifetime minutes).
+    // Used time is the redeemed total (lifetime minutes).
     playMinutes: state.lifetime.playMinutes,
   };
 
-  // IMPORTANT CHANGE:
-  // "Current" Minecraft minutes are *convertible right now* from ⬛ on hand.
-  // This exactly mirrors the convert button's value (10 ⬛ ➜ 30m * blocks).
+  // "Current" Minecraft minutes = convertible right now from ⬛ on hand.
   const currentPlayableMinutes = canNEtoTime * 30;
 
   return (
@@ -298,7 +319,8 @@ export default function StatsPage() {
                   <td>🎮 Minecraft Earned</td>
                   {/* Used = lifetime minutes (redeemed). Current = convertible now (mirrors button). */}
                   <td>{used.playMinutes} <span style={{ opacity: 0.8 }}>({minutesToHHMM(used.playMinutes)})</span></td>
-                  <td>{currentPlayableMinutes} <span style={{ opacity: 0.8 }}>({minutesToHHMM(currentPlayableMinutes)})</span></td>
+                  <td>-</td>
+                  {/* <td>{currentPlayableMinutes} <span style={{ opacity: 0.8 }}>({minutesToHHMM(currentPlayableMinutes)})</span></td> */}
                 </tr>
               </tbody>
             </table>

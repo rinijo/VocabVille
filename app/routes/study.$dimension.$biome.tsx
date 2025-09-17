@@ -486,15 +486,6 @@ export default function StudyPage() {
                 Save the villagers
               </Link>
             </div>
-
-            <div className="side-card card">
-              <h3 style={{ marginTop: 0 }}>📊 Progress</h3>
-              <ul style={{ margin: 0, paddingLeft: "1rem" }}>
-                <li>Answered once: {completedOnceCount}</li>
-                <li>Mastered: {masteredCount}</li>
-                <li>Crafting tables: {craftingCount}</li>
-              </ul>
-            </div>
           </aside>
         </div>
       </div>
