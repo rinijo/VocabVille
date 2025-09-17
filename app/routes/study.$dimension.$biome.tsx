@@ -22,6 +22,7 @@ type WordStatus = {
 };
 
 const STATUS_KEY = "vocabville:study:status";
+const UNLOCKS_KEY = "vocabville:biome:unlocks"; // must match your map reader
 const BASE = import.meta.env.BASE_URL ?? "/";
 
 const titleCase = (s: string) =>
@@ -60,6 +61,48 @@ function ensureFirstBiomeUnlocked() {
     }
   } catch {
     // ignore storage errors (e.g., private mode)
+  }
+}
+
+/** Flatten overworld biome list and find the "next" slug after the current one. */
+function getNextBiomeSlug(currentSlug: string): string | null {
+  const all = OVERWORLD_CATEGORIES.flatMap((c) => c.biomes);
+  const i = all.findIndex((b) => b.slug === currentSlug);
+  if (i === -1 || i + 1 >= all.length) return null;
+  return all[i + 1].slug;
+}
+
+/** If every word in (dimension, biome) is mastered, unlock the next biome. */
+function unlockNextBiomeIfComplete(
+  dimension: string,
+  biome: string,
+  words: WordCard[]
+): { unlockedSlug: string | null } {
+  try {
+    const status = loadAllStatus(dimension, biome);
+    const allMastered =
+      words.length > 0 &&
+      words.every((w) => status[w.term]?.mastered === true);
+
+    if (!allMastered) return { unlockedSlug: null };
+
+    const nextSlug = getNextBiomeSlug(biome);
+    if (!nextSlug) return { unlockedSlug: null };
+
+    // Update central unlocks object: { [dimension]: { [biome]: true } }
+    const raw = localStorage.getItem(UNLOCKS_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    const bucket = { ...(obj?.[dimension] ?? {}) };
+
+    if (!bucket[nextSlug]) {
+      bucket[nextSlug] = true;
+      const merged = { ...obj, [dimension]: bucket };
+      localStorage.setItem(UNLOCKS_KEY, JSON.stringify(merged));
+      return { unlockedSlug: nextSlug };
+    }
+    return { unlockedSlug: null };
+  } catch {
+    return { unlockedSlug: null };
   }
 }
 
@@ -106,9 +149,9 @@ export default function StudyPage() {
   const [spellValue, setSpellValue] = React.useState("");
 
   // Toast popup state (auto hides in 3s)
-  const [toast, setToast] = React.useState<{ kind: "success" | "error"; msg: string } | null>(null);
+  const [toast, setToast] = React.useState<{ kind: "success" | "error" | "info"; msg: string } | null>(null);
   const toastTimerRef = React.useRef<number | null>(null);
-  const showToast = (kind: "success" | "error", msg: string) => {
+  const showToast = (kind: "success" | "error" | "info", msg: string) => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     setToast({ kind, msg });
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3000);
@@ -257,6 +300,13 @@ export default function StudyPage() {
     statusMap[current.term] = st;
     saveAllStatus(dimension, biome, statusMap);
 
+    // 🔓 After saving the attempt, if *all words* are mastered in this biome,
+    // unlock the next biome and notify the user once.
+    const { unlockedSlug } = unlockNextBiomeIfComplete(dimension, biome, words);
+    if (unlockedSlug) {
+      showToast("info", `🎉 New biome unlocked: ${titleCase(unlockedSlug)}!`);
+    }
+
     setSubmitted(true);
 
     // Move to next item to keep the flow
@@ -269,7 +319,7 @@ export default function StudyPage() {
       <main className="center-wrap">
         <div className="stack">
           <h1 className="h1">Unknown study path</h1>
-          <Link className="mc-btn" to="/">Back to Home</Link>
+          <Link className="mc-btn" to="/">Back to Overworld</Link>
         </div>
       </main>
     );
@@ -499,7 +549,9 @@ export default function StudyPage() {
             left: "50%",
             transform: "translate(-50%, -50%)",
             zIndex: 10,
-            background: toast.kind === "success" ? "#195c28" : "#6b2f1f",
+            background:
+              toast.kind === "success" ? "#195c28" :
+              toast.kind === "error"   ? "#6b2f1f" : "#244e7a",
             color: "#fff",
             border: "4px solid #1b1b1b",
             boxShadow: "0 8px 0 #000",
