@@ -2,187 +2,187 @@
   {
     "term": "litigation",
     "definition": "The process of taking legal action.",
-    "synonyms": { "correct": "lawsuit", "options": ["lawsuit", "punishment", "crime", "trial"] },
-    "antonyms": { "correct": "settlement", "options": ["verdict", "judgment", "sentence", "settlement"] }
+    "synonyms": { "correct": "lawsuit", "options": ["lawsuit", "punishment", "crime", "verdict"] },
+    "antonyms": { "correct": "settlement", "options": ["settlement", "appeal", "trial", "prosecution"] }
   },
   {
     "term": "fertile",
     "definition": "Capable of producing crops, vegetation, or ideas in abundance.",
-    "synonyms": { "correct": "productive", "options": ["productive", "barren", "waste", "infertile"] },
-    "antonyms": { "correct": "barren", "options": ["fruitful", "abundant", "lush", "barren"] }
+    "synonyms": { "correct": "productive", "options": ["productive", "empty", "rocky", "quiet"] },
+    "antonyms": { "correct": "barren", "options": ["barren", "urban", "wet", "gentle"] }
   },
   {
     "term": "enumerate",
     "definition": "To list or name things one by one.",
-    "synonyms": { "correct": "list", "options": ["list", "ignore", "skip", "forget"] },
-    "antonyms": { "correct": "omit", "options": ["count", "recite", "state", "omit"] }
+    "synonyms": { "correct": "list", "options": ["list", "celebrate", "hesitate", "decorate"] },
+    "antonyms": { "correct": "omit", "options": ["omit", "count", "record", "explain"] }
   },
   {
     "term": "impose",
     "definition": "To force something to be accepted or set as a rule.",
-    "synonyms": { "correct": "enforce", "options": ["enforce", "submit", "obey", "accept"] },
-    "antonyms": { "correct": "lift", "options": ["repeal", "withdraw", "remove", "lift"] }
+    "synonyms": { "correct": "enforce", "options": ["enforce", "request", "suggest", "invite"] },
+    "antonyms": { "correct": "lift", "options": ["lift", "apply", "start", "issue"] }
   },
   {
     "term": "denounce",
     "definition": "To publicly declare something wrong or evil.",
-    "synonyms": { "correct": "condemn", "options": ["condemn", "praise", "support", "approve"] },
-    "antonyms": { "correct": "praise", "options": ["defend", "endorse", "commend", "praise"] }
+    "synonyms": { "correct": "condemn", "options": ["condemn", "fund", "praise", "ignore"] },
+    "antonyms": { "correct": "praise", "options": ["praise", "accuse", "blame", "expose"] }
   },
   {
     "term": "pillage",
     "definition": "To rob a place using violence, especially in war.",
-    "synonyms": { "correct": "plunder", "options": ["plunder", "guard", "protect", "defend"] },
-    "antonyms": { "correct": "protect", "options": ["safeguard", "defend", "preserve", "protect"] }
+    "synonyms": { "correct": "plunder", "options": ["plunder", "trade", "patrol", "repair"] },
+    "antonyms": { "correct": "protect", "options": ["protect", "attack", "invade", "steal"] }
   },
   {
     "term": "euphoria",
     "definition": "A feeling of great happiness and excitement.",
-    "synonyms": { "correct": "elation", "options": ["elation", "misery", "gloom", "sorrow"] },
-    "antonyms": { "correct": "misery", "options": ["despair", "sadness", "unhappiness", "misery"] }
+    "synonyms": { "correct": "elation", "options": ["elation", "headache", "fear", "boredom"] },
+    "antonyms": { "correct": "misery", "options": ["misery", "giggle", "delight", "holiday"] }
   },
   {
     "term": "substantiate",
     "definition": "To provide evidence to support the truth of something.",
-    "synonyms": { "correct": "prove", "options": ["prove", "deny", "contradict", "reject"] },
-    "antonyms": { "correct": "disprove", "options": ["refute", "invalidate", "negate", "disprove"] }
+    "synonyms": { "correct": "prove", "options": ["prove", "guess", "deny", "wonder"] },
+    "antonyms": { "correct": "disprove", "options": ["disprove", "confirm", "verify", "support"] }
   },
   {
     "term": "reverence",
     "definition": "Deep respect for someone or something.",
-    "synonyms": { "correct": "respect", "options": ["respect", "scorn", "disdain", "contempt"] },
-    "antonyms": { "correct": "contempt", "options": ["disrespect", "scorn", "mockery", "contempt"] }
+    "synonyms": { "correct": "respect", "options": ["respect", "joke", "noise", "damage"] },
+    "antonyms": { "correct": "contempt", "options": ["contempt", "care", "honour", "praise"] }
   },
   {
     "term": "despicable",
     "definition": "Deserving hatred or contempt.",
-    "synonyms": { "correct": "contemptible", "options": ["contemptible", "admirable", "praiseworthy", "honourable"] },
-    "antonyms": { "correct": "admirable", "options": ["commendable", "worthy", "honourable", "admirable"] }
+    "synonyms": { "correct": "contemptible", "options": ["contemptible", "colourful", "useful", "tidy"] },
+    "antonyms": { "correct": "admirable", "options": ["admirable", "disgusting", "vile", "cruel"] }
   },
   {
     "term": "confiscate",
     "definition": "To take something away with authority, usually as punishment.",
-    "synonyms": { "correct": "seize", "options": ["seize", "return", "donate", "restore"] },
-    "antonyms": { "correct": "return", "options": ["give", "restore", "hand back", "return"] }
+    "synonyms": { "correct": "seize", "options": ["seize", "fold", "paint", "measure"] },
+    "antonyms": { "correct": "return", "options": ["return", "capture", "keep", "store"] }
   },
   {
     "term": "flawless",
     "definition": "Without any imperfections; perfect.",
-    "synonyms": { "correct": "perfect", "options": ["perfect", "faulty", "imperfect", "broken"] },
-    "antonyms": { "correct": "imperfect", "options": ["flawed", "faulty", "defective", "imperfect"] }
+    "synonyms": { "correct": "perfect", "options": ["perfect", "late", "noisy", "casual"] },
+    "antonyms": { "correct": "imperfect", "options": ["imperfect", "sealed", "whole", "final"] }
   },
   {
     "term": "noteworthy",
     "definition": "Worthy of attention or notice; remarkable.",
-    "synonyms": { "correct": "remarkable", "options": ["remarkable", "ordinary", "common", "usual"] },
-    "antonyms": { "correct": "ordinary", "options": ["unremarkable", "trivial", "normal", "ordinary"] }
+    "synonyms": { "correct": "remarkable", "options": ["remarkable", "weekly", "local", "spare"] },
+    "antonyms": { "correct": "ordinary", "options": ["ordinary", "brilliant", "rare", "notable"] }
   },
   {
     "term": "endeavour",
     "definition": "An attempt to achieve something; to try hard.",
-    "synonyms": { "correct": "effort", "options": ["effort", "idleness", "inaction", "neglect"] },
-    "antonyms": { "correct": "idleness", "options": ["laziness", "inaction", "slackness", "idleness"] }
+    "synonyms": { "correct": "effort", "options": ["effort", "break", "sleep", "holiday"] },
+    "antonyms": { "correct": "idleness", "options": ["idleness", "industry", "work", "drive"] }
   },
   {
     "term": "adopt",
     "definition": "To take something on as your own, such as an idea or a child.",
-    "synonyms": { "correct": "embrace", "options": ["embrace", "reject", "abandon", "discard"] },
-    "antonyms": { "correct": "reject", "options": ["refuse", "abandon", "dismiss", "reject"] }
+    "synonyms": { "correct": "embrace", "options": ["embrace", "delay", "observe", "glance"] },
+    "antonyms": { "correct": "reject", "options": ["reject", "accept", "choose", "welcome"] }
   },
   {
     "term": "anarchist",
     "definition": "A person who believes in or tries to bring about lawlessness and disorder.",
-    "synonyms": { "correct": "rebel", "options": ["rebel", "loyalist", "supporter", "follower"] },
-    "antonyms": { "correct": "loyalist", "options": ["supporter", "follower", "patriot", "loyalist"] }
+    "synonyms": { "correct": "rebel", "options": ["rebel", "farmer", "driver", "host"] },
+    "antonyms": { "correct": "loyalist", "options": ["loyalist", "tourist", "artist", "florist"] }
   },
   {
     "term": "inaugurate",
     "definition": "To formally begin or introduce something, especially with a ceremony.",
-    "synonyms": { "correct": "commence", "options": ["commence", "end", "finish", "conclude"] },
-    "antonyms": { "correct": "conclude", "options": ["cease", "terminate", "finish", "conclude"] }
+    "synonyms": { "correct": "commence", "options": ["commence", "paint", "borrow", "whisper"] },
+    "antonyms": { "correct": "conclude", "options": ["conclude", "launch", "introduce", "begin"] }
   },
   {
     "term": "aversion",
     "definition": "A strong dislike or unwillingness.",
-    "synonyms": { "correct": "dislike", "options": ["dislike", "fondness", "liking", "affection"] },
-    "antonyms": { "correct": "fondness", "options": ["liking", "love", "affection", "fondness"] }
+    "synonyms": { "correct": "dislike", "options": ["dislike", "hobby", "memory", "journey"] },
+    "antonyms": { "correct": "fondness", "options": ["fondness", "fear", "alarm", "shock"] }
   },
   {
     "term": "quarantine",
     "definition": "A state of isolation to prevent the spread of disease.",
-    "synonyms": { "correct": "isolation", "options": ["isolation", "freedom", "release", "liberty"] },
-    "antonyms": { "correct": "freedom", "options": ["release", "liberty", "openness", "freedom"] }
+    "synonyms": { "correct": "isolation", "options": ["isolation", "meeting", "parade", "market"] },
+    "antonyms": { "correct": "freedom", "options": ["freedom", "arrest", "barrier", "custody"] }
   },
   {
     "term": "languish",
     "definition": "To weaken or suffer from being forced to remain in an unpleasant place or situation.",
-    "synonyms": { "correct": "wither", "options": ["wither", "flourish", "thrive", "prosper"] },
-    "antonyms": { "correct": "flourish", "options": ["thrive", "prosper", "blossom", "flourish"] }
+    "synonyms": { "correct": "wither", "options": ["wither", "gather", "sparkle", "arrive"] },
+    "antonyms": { "correct": "flourish", "options": ["flourish", "fade", "droop", "weaken"] }
   },
   {
     "term": "glib",
     "definition": "Speaking in a smooth, easy way that may not be sincere.",
-    "synonyms": { "correct": "slick", "options": ["slick", "sincere", "earnest", "genuine"] },
-    "antonyms": { "correct": "sincere", "options": ["honest", "earnest", "genuine", "sincere"] }
+    "synonyms": { "correct": "slick", "options": ["slick", "silent", "rough", "slow"] },
+    "antonyms": { "correct": "sincere", "options": ["sincere", "speedy", "chatty", "clever"] }
   },
   {
     "term": "munificence",
     "definition": "Great generosity.",
-    "synonyms": { "correct": "generosity", "options": ["generosity", "meanness", "selfishness", "stinginess"] },
-    "antonyms": { "correct": "stinginess", "options": ["meanness", "selfishness", "parsimony", "stinginess"] }
+    "synonyms": { "correct": "generosity", "options": ["generosity", "height", "hunger", "weather"] },
+    "antonyms": { "correct": "stinginess", "options": ["stinginess", "charity", "kindness", "plenty"] }
   },
   {
     "term": "imperious",
     "definition": "Arrogant and domineering.",
-    "synonyms": { "correct": "overbearing", "options": ["overbearing", "humble", "modest", "meek"] },
-    "antonyms": { "correct": "humble", "options": ["modest", "meek", "submissive", "humble"] }
+    "synonyms": { "correct": "overbearing", "options": ["overbearing", "sleepy", "polite", "merry"] },
+    "antonyms": { "correct": "humble", "options": ["humble", "bossy", "royal", "grand"] }
   },
   {
     "term": "persona",
     "definition": "The image or personality a person presents to others.",
-    "synonyms": { "correct": "character", "options": ["character", "self", "identity", "mask"] },
-    "antonyms": { "correct": "self", "options": ["individual", "real self", "authenticity", "self"] }
+    "synonyms": { "correct": "character", "options": ["character", "engine", "ticket", "planet"] },
+    "antonyms": { "correct": "self", "options": ["self", "costume", "role", "mask"] }
   },
   {
     "term": "conclusive",
     "definition": "Serving to prove a case; decisive or final.",
-    "synonyms": { "correct": "decisive", "options": ["decisive", "uncertain", "doubtful", "inconclusive"] },
-    "antonyms": { "correct": "inconclusive", "options": ["uncertain", "doubtful", "indecisive", "inconclusive"] }
+    "synonyms": { "correct": "decisive", "options": ["decisive", "unclear", "loose", "random"] },
+    "antonyms": { "correct": "inconclusive", "options": ["inconclusive", "final", "settled", "certain"] }
   },
   {
     "term": "proliferation",
     "definition": "A rapid increase in numbers or spread.",
-    "synonyms": { "correct": "increase", "options": ["increase", "decline", "reduction", "drop"] },
-    "antonyms": { "correct": "decline", "options": ["reduction", "fall", "drop", "decline"] }
+    "synonyms": { "correct": "increase", "options": ["increase", "triangle", "library", "engine"] },
+    "antonyms": { "correct": "decline", "options": ["decline", "surge", "rise", "boom"] }
   },
   {
     "term": "blissful",
     "definition": "Extremely happy or joyful.",
-    "synonyms": { "correct": "joyful", "options": ["joyful", "sad", "miserable", "sorrowful"] },
-    "antonyms": { "correct": "miserable", "options": ["sad", "sorrowful", "unhappy", "miserable"] }
+    "synonyms": { "correct": "joyful", "options": ["joyful", "icy", "serious", "muddy"] },
+    "antonyms": { "correct": "miserable", "options": ["miserable", "calm", "fine", "tidy"] }
   },
   {
     "term": "flimsy",
     "definition": "Not strong or solid; weak.",
-    "synonyms": { "correct": "weak", "options": ["weak", "sturdy", "solid", "strong"] },
-    "antonyms": { "correct": "sturdy", "options": ["solid", "firm", "strong", "sturdy"] }
+    "synonyms": { "correct": "weak", "options": ["weak", "round", "polished", "tidy"] },
+    "antonyms": { "correct": "sturdy", "options": ["sturdy", "thin", "light", "simple"] }
   },
   {
     "term": "paradox",
     "definition": "A statement that seems contradictory but may reveal a truth.",
-    "synonyms": { "correct": "contradiction", "options": ["contradiction", "certainty", "truth", "agreement"] },
-    "antonyms": { "correct": "certainty", "options": ["truth", "clarity", "fact", "certainty"] }
+    "synonyms": { "correct": "contradiction", "options": ["contradiction", "umbrella", "pattern", "schedule"] },
+    "antonyms": { "correct": "certainty", "options": ["certainty", "question", "guess", "rumour"] }
   },
   {
     "term": "detached",
     "definition": "Not emotionally involved; separate or disconnected.",
-    "synonyms": { "correct": "aloof", "options": ["aloof", "involved", "attached", "engaged"] },
-    "antonyms": { "correct": "involved", "options": ["attached", "engaged", "connected", "involved"] }
+    "synonyms": { "correct": "aloof", "options": ["aloof", "lively", "kind", "busy"] },
+    "antonyms": { "correct": "involved", "options": ["involved", "distant", "separate", "remote"] }
   },
   {
     "term": "accusatory",
     "definition": "Suggesting that someone has done something wrong.",
-    "synonyms": { "correct": "blaming", "options": ["blaming", "praising", "defending", "approving"] },
-    "antonyms": { "correct": "praising", "options": ["commending", "supporting", "approving", "praising"] }
+    "synonyms": { "correct": "blaming", "options": ["blaming", "repairing", "cooking", "driving"] },
+    "antonyms": { "correct": "praising", "options": ["praising", "charging", "warning", "arguing"] }
   }
 ]
