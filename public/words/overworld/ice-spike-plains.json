@@ -1,0 +1,182 @@
+[
+  {
+    "term": "bewildered",
+    "definition": "Feeling confused and unable to understand what is happening.",
+    "synonyms": { "correct": "confused", "options": ["confused", "confident", "certain", "calm"] },
+    "antonyms": { "correct": "certain", "options": ["certain", "puzzled", "lost", "perplexed"] }
+  },
+  {
+    "term": "divulge",
+    "definition": "To reveal or make known something that was secret.",
+    "synonyms": { "correct": "reveal", "options": ["reveal", "conceal", "ignore", "forget"] },
+    "antonyms": { "correct": "conceal", "options": ["conceal", "announce", "publish", "share"] }
+  },
+  {
+    "term": "habitat",
+    "definition": "The natural home or environment of an animal or plant.",
+    "synonyms": { "correct": "environment", "options": ["environment", "object", "creature", "journey"] },
+    "antonyms": { "correct": "wilderness-free area", "options": ["wilderness-free area", "home", "setting", "region"] }
+  },
+  {
+    "term": "mitigating",
+    "definition": "Making something less severe or serious.",
+    "synonyms": { "correct": "reducing", "options": ["reducing", "worsening", "ignoring", "causing"] },
+    "antonyms": { "correct": "aggravating", "options": ["aggravating", "easing", "softening", "lessening"] }
+  },
+  {
+    "term": "introvert",
+    "definition": "A person who prefers calm environments and enjoys being alone.",
+    "synonyms": { "correct": "reserved person", "options": ["reserved person", "performer", "leader", "show-off"] },
+    "antonyms": { "correct": "extrovert", "options": ["extrovert", "loner", "thinker", "observer"] }
+  },
+  {
+    "term": "affirmation",
+    "definition": "A statement that shows support, approval, or belief.",
+    "synonyms": { "correct": "confirmation", "options": ["confirmation", "denial", "question", "doubt"] },
+    "antonyms": { "correct": "denial", "options": ["denial", "approval", "support", "agreement"] }
+  },
+  {
+    "term": "wilful",
+    "definition": "Done deliberately or showing stubborn determination.",
+    "synonyms": { "correct": "deliberate", "options": ["deliberate", "accidental", "careless", "random"] },
+    "antonyms": { "correct": "accidental", "options": ["accidental", "intentional", "planned", "decided"] }
+  },
+  {
+    "term": "facile",
+    "definition": "Appearing easy but often lacking depth or effort.",
+    "synonyms": { "correct": "superficial", "options": ["superficial", "difficult", "complex", "thorough"] },
+    "antonyms": { "correct": "thorough", "options": ["thorough", "shallow", "simple", "easy"] }
+  },
+  {
+    "term": "usurp",
+    "definition": "To take power or a position by force or without right.",
+    "synonyms": { "correct": "seize", "options": ["seize", "offer", "return", "grant"] },
+    "antonyms": { "correct": "relinquish", "options": ["relinquish", "take", "claim", "capture"] }
+  },
+  {
+    "term": "medley",
+    "definition": "A mixture of different things.",
+    "synonyms": { "correct": "mixture", "options": ["mixture", "order", "single", "pattern"] },
+    "antonyms": { "correct": "uniformity", "options": ["uniformity", "blend", "variety", "mix"] }
+  },
+  {
+    "term": "assented",
+    "definition": "Expressed approval or agreement.",
+    "synonyms": { "correct": "agreed", "options": ["agreed", "objected", "refused", "denied"] },
+    "antonyms": { "correct": "refused", "options": ["refused", "accepted", "approved", "allowed"] }
+  },
+  {
+    "term": "deterrent",
+    "definition": "Something that discourages an action.",
+    "synonyms": { "correct": "discouragement", "options": ["discouragement", "encouragement", "reward", "invitation"] },
+    "antonyms": { "correct": "incentive", "options": ["incentive", "obstacle", "barrier", "block"] }
+  },
+  {
+    "term": "convict",
+    "definition": "A person found guilty of a crime.",
+    "synonyms": { "correct": "criminal", "options": ["criminal", "judge", "witness", "lawyer"] },
+    "antonyms": { "correct": "innocent person", "options": ["innocent person", "offender", "prisoner", "lawbreaker"] }
+  },
+  {
+    "term": "expel",
+    "definition": "To force someone or something to leave.",
+    "synonyms": { "correct": "eject", "options": ["eject", "invite", "welcome", "admit"] },
+    "antonyms": { "correct": "admit", "options": ["admit", "remove", "banish", "oust"] }
+  },
+  {
+    "term": "plenary",
+    "definition": "Complete or involving all members.",
+    "synonyms": { "correct": "full", "options": ["full", "partial", "limited", "minor"] },
+    "antonyms": { "correct": "partial", "options": ["partial", "complete", "entire", "total"] }
+  },
+  {
+    "term": "prophetic",
+    "definition": "Accurately predicting what will happen in the future.",
+    "synonyms": { "correct": "predictive", "options": ["predictive", "forgetful", "backward", "uncertain"] },
+    "antonyms": { "correct": "unpredictable", "options": ["unpredictable", "foretelling", "visionary", "farsighted"] }
+  },
+  {
+    "term": "formidable",
+    "definition": "Causing fear or respect because of strength or power.",
+    "synonyms": { "correct": "imposing", "options": ["imposing", "weak", "timid", "harmless"] },
+    "antonyms": { "correct": "weak", "options": ["weak", "powerful", "intimidating", "strong"] }
+  },
+  {
+    "term": "plagiarise",
+    "definition": "To copy someone else's work and claim it as your own.",
+    "synonyms": { "correct": "copy", "options": ["copy", "invent", "create", "design"] },
+    "antonyms": { "correct": "create", "options": ["create", "steal", "imitate", "duplicate"] }
+  },
+  {
+    "term": "disdain",
+    "definition": "A feeling that something is unworthy of respect.",
+    "synonyms": { "correct": "contempt", "options": ["contempt", "respect", "admiration", "liking"] },
+    "antonyms": { "correct": "respect", "options": ["respect", "scorn", "hatred", "mockery"] }
+  },
+  {
+    "term": "separate",
+    "definition": "To keep apart or divide.",
+    "synonyms": { "correct": "divide", "options": ["divide", "join", "merge", "combine"] },
+    "antonyms": { "correct": "unite", "options": ["unite", "split", "divide", "isolate"] }
+  },
+  {
+    "term": "inhale",
+    "definition": "To breathe in.",
+    "synonyms": { "correct": "breathe in", "options": ["breathe in", "exhale", "release", "emit"] },
+    "antonyms": { "correct": "exhale", "options": ["exhale", "inhale", "draw", "take in"] }
+  },
+  {
+    "term": "earnest",
+    "definition": "Showing sincere and serious intent.",
+    "synonyms": { "correct": "sincere", "options": ["sincere", "joking", "careless", "playful"] },
+    "antonyms": { "correct": "insincere", "options": ["insincere", "serious", "solemn", "honest"] }
+  },
+  {
+    "term": "scarcity",
+    "definition": "A lack or shortage of something.",
+    "synonyms": { "correct": "shortage", "options": ["shortage", "plenty", "abundance", "wealth"] },
+    "antonyms": { "correct": "abundance", "options": ["abundance", "lack", "need", "poverty"] }
+  },
+  {
+    "term": "atrocious",
+    "definition": "Extremely bad or unpleasant.",
+    "synonyms": { "correct": "terrible", "options": ["terrible", "excellent", "pleasant", "kind"] },
+    "antonyms": { "correct": "excellent", "options": ["excellent", "awful", "horrible", "dreadful"] }
+  },
+  {
+    "term": "betray",
+    "definition": "To be disloyal or reveal something secretly.",
+    "synonyms": { "correct": "deceive", "options": ["deceive", "support", "protect", "defend"] },
+    "antonyms": { "correct": "support", "options": ["support", "trick", "expose", "cheat"] }
+  },
+  {
+    "term": "disturbing",
+    "definition": "Causing worry, fear, or discomfort.",
+    "synonyms": { "correct": "unsettling", "options": ["unsettling", "calming", "soothing", "pleasant"] },
+    "antonyms": { "correct": "reassuring", "options": ["reassuring", "alarming", "troubling", "upsetting"] }
+  },
+  {
+    "term": "necessary",
+    "definition": "Needed or required.",
+    "synonyms": { "correct": "essential", "options": ["essential", "optional", "extra", "spare"] },
+    "antonyms": { "correct": "optional", "options": ["optional", "required", "vital", "important"] }
+  },
+  {
+    "term": "effervescent",
+    "definition": "Full of bubbles or lively energy.",
+    "synonyms": { "correct": "bubbly", "options": ["bubbly", "dull", "flat", "heavy"] },
+    "antonyms": { "correct": "flat", "options": ["flat", "sparkling", "lively", "animated"] }
+  },
+  {
+    "term": "loneliness",
+    "definition": "The feeling of being alone or isolated.",
+    "synonyms": { "correct": "isolation", "options": ["isolation", "company", "friendship", "crowd"] },
+    "antonyms": { "correct": "companionship", "options": ["companionship", "solitude", "seclusion", "privacy"] }
+  },
+  {
+    "term": "charismatic",
+    "definition": "Having a special charm that attracts and influences others.",
+    "synonyms": { "correct": "charming", "options": ["charming", "boring", "dull", "awkward"] },
+    "antonyms": { "correct": "unappealing", "options": ["unappealing", "magnetic", "captivating", "engaging"] }
+  }
+]
